@@ -87,12 +87,13 @@ pub struct SearchInput {
 
 #[actix_web::get("/pessoas")]
 pub async fn all(input: web::Query<SearchInput>, app_state: web::Data<AppState>) -> impl Responder {
+    let term = format!("%{}%", input.t);
     let query = sqlx::query(
         "
         SELECT * FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
     ",
     )
-    .bind(&input.t);
+    .bind(&term);
     let persons = app_state.db.fetch_all(query).await;
     match persons {
         Ok(persons) => HttpResponse::Ok().json(
