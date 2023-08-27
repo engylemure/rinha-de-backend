@@ -42,7 +42,7 @@ pub async fn create(
         return HttpResponse::BadRequest().finish();
     };
     let location = format!("/pessoas/{}", pessoa.id);
-    (app_state.as_ref().person_queue.as_ref()).push(pessoa);
+    app_state.person_queue.push(pessoa);
     HttpResponse::Created()
         .append_header(("Location", location))
         .finish()
@@ -94,10 +94,9 @@ pub async fn all(input: web::Query<SearchInput>, app_state: web::Data<AppState>)
     ",
     )
     .bind(&term);
-    let persons = app_state.db.fetch_all(query).await;
-    match persons {
-        Ok(persons) => HttpResponse::Ok().json(
-            persons
+    match app_state.db.fetch_all(query).await {
+        Ok(pessoas) => HttpResponse::Ok().json(
+            pessoas
                 .into_iter()
                 .filter_map(|p| Pessoa::from_row(&p).ok())
                 .collect::<Vec<_>>(),
