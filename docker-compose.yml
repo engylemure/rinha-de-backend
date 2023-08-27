@@ -1,0 +1,91 @@
+version: '3.5'
+services:
+  api1:
+    # API - Instância 01
+    #    image: api
+    build: ./
+    hostname: api01
+#    volumes:
+#      - ./api:/opt/app/api
+    depends_on:
+      - db
+    expose:
+      - "80"
+    env_file: ./env
+    environment:
+      - RUST_ENV=prod
+      - RUST_LOG=info
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: '0.250GB'
+  api2:
+    # API - Instância 01
+    #    image: api
+    build: ./
+    hostname: api02
+    depends_on:
+      - db
+    expose:
+      - "80"
+    env_file: ./env
+    environment:
+      - RUST_ENV=prod
+      - RUST_LOG=info
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: '0.250GB'
+
+  nginx:
+    # Load Balancer
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
+    ports:
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '0.250GB'
+  redis:
+    image: redis:7.0.12-alpine
+    command: redis-server --save "" --appendonly no --maxclients 20000
+    hostname: redis
+    ports:
+      - 6379:6379
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: '0.750GB'
+  db:
+    # Banco de dados
+    image: postgres:15.4-alpine3.18
+    hostname: db
+    environment:
+      POSTGRES_PASSWORD: root
+      POSTGRES_USER: root
+      POSTGRES_DB: rinha_de_backend
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./postgresql.conf:/docker-entrypoint-initdb.d/postgresql.conf
+    command: postgres -c config_file=/docker-entrypoint-initdb.d/postgresql.conf
+    ports:
+      - 5433:5432
+    deploy:
+      resources:
+        limits:
+          cpus: '0.6'
+          memory: '1.5GB'
+
+networks:
+  default:
+    driver: bridge
+    name: rinha
