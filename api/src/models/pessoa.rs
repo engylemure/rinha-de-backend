@@ -25,8 +25,18 @@ impl PessoaInput {
     }
 }
 
-impl From<PessoaInput> for Option<Pessoa> {
-    fn from(value: PessoaInput) -> Self {
+#[derive(Serialize, Deserialize)]
+pub struct Pessoa {
+    pub id: String,
+    pub apelido: String,
+    pub nome: String,
+    pub nascimento: String,
+    pub stack: Option<Vec<String>>,
+}
+
+impl Pessoa {
+    #[inline]
+    pub fn from(value: PessoaInput) -> Option<Self> {
         value.validate().then_some(Pessoa {
             id: Uuid::new_v4().to_string(),
             apelido: value.apelido,
@@ -35,15 +45,6 @@ impl From<PessoaInput> for Option<Pessoa> {
             stack: value.stack,
         })
     }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Pessoa {
-    pub id: String,
-    pub apelido: String,
-    pub nome: String,
-    pub nascimento: String,
-    pub stack: Option<Vec<String>>,
 }
 
 impl FromRow<'_, PgRow> for Pessoa {

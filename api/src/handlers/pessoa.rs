@@ -7,39 +7,32 @@ use crate::{
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use sqlx::Error as SqlxError;
-use uuid::Uuid;
 
 #[actix_web::post("/pessoas")]
 pub async fn create(
     input: web::Json<PessoaInput>,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
-    let pessoa = if let Some(pessoa) = Option::<Pessoa>::from(input.into_inner()) {
+    let pessoa = if let Some(pessoa) = Pessoa::from(input.into_inner()) {
         if let Ok(mut conn) = app_state.redis.get().await {
-            let key = format!("/pessoas/apelido/{}", pessoa.apelido);
-            if redis::cmd("GET")
-                .arg(key.as_str())
-                .query_async::<_, Option<bool>>(&mut conn)
+            let apelido_key = format!("/pessoas/apelido/{}", pessoa.apelido);
+            if let Ok(Some(_)) = redis::cmd("GET")
+                .arg(apelido_key.as_str())
+                .query_async::<_, Option<()>>(&mut conn)
                 .await
-                .ok()
-                .flatten()
-                .is_some()
             {
                 return HttpResponse::UnprocessableEntity().finish();
-            } else {
-                let pessoa_str = serde_json::to_string(&pessoa).unwrap();
+            } else if let Ok(pessoa_str) = serde_json::to_string(&pessoa) {
+                let id_key = format!("/pessoas/id/{}", pessoa.id);
                 let _ = redis::cmd("MSET")
-                    .arg(key.as_str())
-                    .arg(true)
-                    .arg(format!("/pessoas/id/{}", pessoa.id))
-                    .arg(pessoa_str)
+                    .arg(&[apelido_key.as_str(), "true", &id_key, pessoa_str.as_str()])
                     .query_async::<_, ()>(&mut conn)
                     .await;
             }
+            pessoa
         } else {
             return HttpResponse::InternalServerError().finish();
         }
-        pessoa
     } else {
         return HttpResponse::BadRequest().finish();
     };
@@ -51,25 +44,23 @@ pub async fn create(
 }
 
 #[actix_web::get("/pessoas/{id}")]
-pub async fn get(id: web::Path<Uuid>, app_state: web::Data<AppState>) -> impl Responder {
-    let id = id.into_inner();
+pub async fn get(id: web::Path<String>, app_state: web::Data<AppState>) -> impl Responder {
     let person = if let Ok(mut conn) = app_state.redis.get().await {
-        if let Some(person) = redis::cmd("GET")
+        if let Ok(person) = redis::cmd("GET")
             .arg(format!("/pessoas/id/{}", id))
             .query_async::<_, String>(&mut conn)
             .await
-            .map(|val| serde_json::from_str::<Pessoa>(&val).ok())
-            .ok()
-            .flatten()
         {
-            return HttpResponse::Ok().json(person);
+            return HttpResponse::Ok()
+                .append_header(actix_web::http::header::ContentType::json())
+                .body(person);
         } else {
             sqlx::query_as::<_, Pessoa>(
                 "
         SELECT * FROM pessoas where id = $1;
     ",
             )
-            .bind(&id.to_string())
+            .bind(id.as_str())
             .fetch_one(&app_state.db)
             .await
         }
@@ -162,13 +153,13 @@ pub async fn count(app_state: web::Data<AppState>) -> impl Responder {
     }
 }
 
-const BATCH_INSERT_INTERVAL_SECS: u64 = 3;
+const BATCH_INSERT_INTERVAL_SECS: u64 = 2;
 
 pub async fn batch_insert_task(app_state: AppState) {
     let mut apelidos = HashSet::<String>::new();
+    let mut pessoas_to_insert = Vec::with_capacity(512);
     loop {
         tokio::time::sleep(Duration::from_secs(BATCH_INSERT_INTERVAL_SECS)).await;
-        let mut pessoas_to_insert = Vec::with_capacity(128);
         while app_state.person_queue.len() > 0 {
             let input = app_state.person_queue.pop().await;
             if apelidos.contains(&input.apelido) {
@@ -182,7 +173,7 @@ pub async fn batch_insert_task(app_state: AppState) {
             let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(
                 "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) ",
             );
-            query.push_values(pessoas_to_insert, |mut b, pessoa| {
+            query.push_values(pessoas_to_insert.drain(..), |mut b, pessoa| {
                 b.push_bind(pessoa.id)
                     .push_bind(pessoa.nome)
                     .push_bind(pessoa.apelido)

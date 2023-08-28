@@ -16,14 +16,14 @@ pub struct AppState {
 impl AppState {
     pub async fn from(env_values: &EnvironmentValues) -> Result<Self, Box<dyn std::error::Error>> {
         let db = PgPoolOptions::new()
-            .max_connections(32768)
-            .min_connections(64)
+            .max_connections(128)
+            .min_connections(32)
             .connect(&env_values.database_url)
             .await?;
         let redis = deadpool_redis::Config {
             url: Some(env_values.redis_url.clone()),
             pool: Some(deadpool_redis::PoolConfig {
-                max_size: 32768,
+                max_size: 8192,
                 timeouts: deadpool_redis::Timeouts {
                     wait: Some(Duration::from_secs(60)),
                     create: Some(Duration::from_secs(60)),
