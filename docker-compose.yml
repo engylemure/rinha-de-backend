@@ -18,7 +18,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.15'
           memory: '0.250GB'
   api2:
     # API - Instância 01
@@ -36,7 +36,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.15'
           memory: '0.250GB'
 
   nginx:
@@ -52,7 +52,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
+          cpus: '0.15'
           memory: '0.250GB'
   redis:
     image: redis:7.0.12-alpine
@@ -63,7 +63,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.2'
+          cpus: '0.3'
           memory: '0.750GB'
   db:
     # Banco de dados
@@ -82,7 +82,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.6'
+          cpus: '0.75'
           memory: '1.5GB'
 
 networks:

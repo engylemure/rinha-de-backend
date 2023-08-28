@@ -12,6 +12,7 @@ pub struct PessoaInput {
 }
 
 impl PessoaInput {
+    #[inline(always)]
     pub fn validate(&self) -> bool {
         self.apelido.len() <= 32
             && self.nome.len() <= 100

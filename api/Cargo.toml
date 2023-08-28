@@ -20,5 +20,5 @@ uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
 deadqueue = { version = "0.2.4", features = ["unlimited"] }
 tokio = { version = "1.32.0", features = ["full"] }
 redis = { version = "0.23.2", features = ["r2d2"] }
-r2d2 = "0.8.10"
+deadpool-redis = "0.12.0"
 

@@ -6,7 +6,7 @@ use crate::{
 };
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
-use sqlx::{Error as SqlxError, Executor, FromRow};
+use sqlx::Error as SqlxError;
 use uuid::Uuid;
 
 #[actix_web::post("/pessoas")]
@@ -15,11 +15,12 @@ pub async fn create(
     app_state: web::Data<AppState>,
 ) -> impl Responder {
     let pessoa = if let Some(pessoa) = Option::<Pessoa>::from(input.into_inner()) {
-        if let Ok(mut conn) = app_state.redis.get() {
+        if let Ok(mut conn) = app_state.redis.get().await {
             let key = format!("/pessoas/apelido/{}", pessoa.apelido);
             if redis::cmd("GET")
                 .arg(key.as_str())
-                .query::<Option<bool>>(&mut conn)
+                .query_async::<_, Option<bool>>(&mut conn)
+                .await
                 .ok()
                 .flatten()
                 .is_some()
@@ -32,7 +33,8 @@ pub async fn create(
                     .arg(true)
                     .arg(format!("/pessoas/id/{}", pessoa.id))
                     .arg(pessoa_str)
-                    .execute(&mut conn);
+                    .query_async::<_, ()>(&mut conn)
+                    .await;
             }
         } else {
             return HttpResponse::InternalServerError().finish();
@@ -51,10 +53,11 @@ pub async fn create(
 #[actix_web::get("/pessoas/{id}")]
 pub async fn get(id: web::Path<Uuid>, app_state: web::Data<AppState>) -> impl Responder {
     let id = id.into_inner();
-    let person = if let Ok(mut conn) = app_state.redis.get() {
+    let person = if let Ok(mut conn) = app_state.redis.get().await {
         if let Some(person) = redis::cmd("GET")
             .arg(format!("/pessoas/id/{}", id))
-            .query::<String>(&mut conn)
+            .query_async::<_, String>(&mut conn)
+            .await
             .map(|val| serde_json::from_str::<Pessoa>(&val).ok())
             .ok()
             .flatten()
@@ -85,22 +88,65 @@ pub struct SearchInput {
     t: String,
 }
 
+async fn _get_cached_search(term: &str, app_state: &AppState) -> Option<String> {
+    let mut conn = app_state.redis.get().await.ok()?;
+    redis::cmd("GET")
+        .arg(format!("/pessoas/search/{}", term))
+        .query_async::<_, String>(&mut conn)
+        .await
+        .ok()
+}
+
+async fn set_cached_search(term: String, pessoas: String, app_state: web::Data<AppState>) {
+    if let Ok(mut conn) = app_state.redis.get().await {
+        let _ = redis::cmd("SET")
+            .arg(format!("/pessoas/search/{}", term))
+            .arg(pessoas)
+            .arg("EX")
+            .arg(15)
+            .query_async::<_, ()>(&mut conn)
+            .await;
+    }
+}
+
 #[actix_web::get("/pessoas")]
 pub async fn all(input: web::Query<SearchInput>, app_state: web::Data<AppState>) -> impl Responder {
     let term = format!("%{}%", input.t);
-    let query = sqlx::query(
+    {
+        if let Ok(mut conn) = app_state.redis.get().await {
+            if let Ok(cached) = redis::cmd("GET")
+                .arg(format!("/pessoas/search/{}", term))
+                .query_async::<_, String>(&mut conn)
+                .await
+            {
+                return HttpResponse::Ok()
+                    .append_header(actix_web::http::header::ContentType::json())
+                    .body(cached);
+            }
+        }
+    }
+    match sqlx::query_as::<sqlx::Postgres, Pessoa>(
         "
-        SELECT * FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
+        SELECT id, apelido, nome, nascimento, stack FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
     ",
     )
-    .bind(&term);
-    match app_state.db.fetch_all(query).await {
-        Ok(pessoas) => HttpResponse::Ok().json(
-            pessoas
-                .into_iter()
-                .filter_map(|p| Pessoa::from_row(&p).ok())
-                .collect::<Vec<_>>(),
-        ),
+    .bind(&term)
+    .persistent(true)
+    .fetch_all(&app_state.db).await {
+        Ok(pessoas) => {
+            if let Ok(pessoas) = serde_json::to_string(&pessoas) {
+                tokio::spawn(set_cached_search(
+                    input.into_inner().t,
+                    pessoas.clone(),
+                    app_state.clone(),
+                ));
+                HttpResponse::Ok()
+                    .append_header(actix_web::http::header::ContentType::json())
+                    .body(pessoas)
+            } else {
+                HttpResponse::InternalServerError().finish()
+            }
+        }
         Err(_) => HttpResponse::InternalServerError().finish(),
     }
 }
