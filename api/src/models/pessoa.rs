@@ -32,7 +32,7 @@ impl From<PessoaInput> for Option<Pessoa> {
             apelido: value.apelido,
             nome: value.nome,
             nascimento: value.nascimento,
-            stack: value.stack
+            stack: value.stack,
         })
     }
 }

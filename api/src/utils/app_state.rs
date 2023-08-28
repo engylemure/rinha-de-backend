@@ -30,8 +30,9 @@ impl AppState {
                     recycle: Some(Duration::from_secs(60)),
                 },
             }),
-            connection: None
-        }.create_pool(Some(deadpool_redis::Runtime::Tokio1))?;
+            connection: None,
+        }
+        .create_pool(Some(deadpool_redis::Runtime::Tokio1))?;
         Ok(Self {
             db,
             redis,

@@ -1,6 +1,6 @@
-mod utils;
 mod handlers;
 mod models;
+mod utils;
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
