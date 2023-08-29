@@ -1,43 +1,31 @@
 version: '3.5'
 services:
-  api1:
+  api1: &api
     # API - Instância 01
     #    image: api
     build: ./
     hostname: api01
-#    volumes:
-#      - ./api:/opt/app/api
     depends_on:
       - db
+      - jaeger
+      - otel_collector
     expose:
       - "80"
     env_file: ./env
     environment:
       - RUST_ENV=prod
       - RUST_LOG=info
+      - WITH_OTEL=false
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
     deploy:
       resources:
         limits:
           cpus: '0.15'
           memory: '0.250GB'
   api2:
-    # API - Instância 01
-    #    image: api
-    build: ./
+    # API - Instancia 02
+    <<: *api
     hostname: api02
-    depends_on:
-      - db
-    expose:
-      - "80"
-    env_file: ./env
-    environment:
-      - RUST_ENV=prod
-      - RUST_LOG=info
-    deploy:
-      resources:
-        limits:
-          cpus: '0.15'
-          memory: '0.250GB'
 
   nginx:
     # Load Balancer
@@ -84,7 +72,34 @@ services:
         limits:
           cpus: '0.75'
           memory: '1.5GB'
-
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    hostname: jaeger
+    depends_on:
+      - prometheus
+    volumes:
+      - "./jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+    environment:
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+      - PROMETHEUS_QUERY_SUPPORT_SPANMETRICS_CONNECTOR=true
+      - LOG_LEVEL=debug
+    ports:
+      - 16686:16686
+  prometheus:
+    hostname: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+  otel_collector:
+    hostname: otel_collector
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-collector-config-connector.yml:/etc/otelcol/otel-collector-config.yml
+    command: --config /etc/otelcol/otel-collector-config.yml
+    depends_on:
+      - jaeger
 networks:
   default:
     driver: bridge

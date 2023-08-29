@@ -7,6 +7,7 @@ pub struct EnvironmentValues {
     pub server_port: u16,
     pub rust_env: String,
     pub rust_log: String,
+    pub with_otel: bool,
 }
 
 impl EnvironmentValues {
@@ -21,6 +22,10 @@ impl EnvironmentValues {
                 .expect("SERVER_PORT must be a number"),
             rust_env: env::var("RUST_ENV").unwrap_or_else(|_| "dev".into()),
             rust_log: std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_owned()),
+            with_otel: std::env::var("WITH_OTEL")
+                .unwrap_or_else(|_| String::from("false"))
+                .parse()
+                .expect("WITH_TELEMETRY should be 'true' or 'false'"),
         }
     }
 }
