@@ -1,5 +1,5 @@
 use dotenv::dotenv;
-use std::env;
+use std::{env, str::FromStr};
 
 pub struct EnvironmentValues {
     pub redis_url: String,
@@ -7,8 +7,27 @@ pub struct EnvironmentValues {
     pub server_port: u16,
     pub rust_env: String,
     pub rust_log: String,
-    pub with_otel: bool,
+    pub logger: Option<LoggerOutput>,
 }
+
+pub enum LoggerOutput {
+    Otel,
+    Stdout
+}
+
+impl FromStr for LoggerOutput {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "otel" => Ok(Self::Otel),
+            "stdout" => Ok(Self::Stdout),
+            _ => Err(())
+        }
+    }
+}
+
+
 
 impl EnvironmentValues {
     pub fn init() -> Self {
@@ -22,10 +41,10 @@ impl EnvironmentValues {
                 .expect("SERVER_PORT must be a number"),
             rust_env: env::var("RUST_ENV").unwrap_or_else(|_| "dev".into()),
             rust_log: std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_owned()),
-            with_otel: std::env::var("WITH_OTEL")
-                .unwrap_or_else(|_| String::from("false"))
-                .parse()
-                .expect("WITH_TELEMETRY should be 'true' or 'false'"),
+            logger: std::env::var("LOGGER_OUTPUT")
+                .ok()
+                .map(|s| s.parse().ok())
+                .flatten()
         }
     }
 }

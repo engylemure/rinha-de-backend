@@ -51,7 +51,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.3'
+          cpus: '0.15'
           memory: '0.750GB'
   db:
     # Banco de dados
@@ -70,7 +70,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.75'
+          cpus: '0.9'
           memory: '1.5GB'
   jaeger:
     image: jaegertracing/all-in-one:latest

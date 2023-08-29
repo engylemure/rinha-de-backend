@@ -160,7 +160,7 @@ pub async fn batch_insert_task(app_state: AppState) {
     let mut pessoas_to_insert = Vec::with_capacity(512);
     loop {
         tokio::time::sleep(Duration::from_secs(BATCH_INSERT_INTERVAL_SECS)).await;
-        while app_state.person_queue.len() > 0 {
+        while app_state.person_queue.len() > 0 && pessoas_to_insert.len() < 512 {
             let input = app_state.person_queue.pop().await;
             if apelidos.contains(&input.apelido) {
                 continue;
