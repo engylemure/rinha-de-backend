@@ -7,7 +7,7 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
     
 # Adding system dependencies
-RUN apk add libpq libaio libstdc++ libc6-compat  musl musl-dev protoc protobuf-dev
+RUN apk --no-cache add libpq libaio libstdc++ libc6-compat  musl musl-dev protoc protobuf-dev
 
 # Setting up working directory
 ENV HOME=/opt/app

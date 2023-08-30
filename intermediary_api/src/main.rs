@@ -2,6 +2,7 @@ mod models;
 mod utils;
 use std::sync::Arc;
 use std::time::Duration;
+use std::str::FromStr;
 
 use dashmap::*;
 use models::pessoa::Pessoa;
@@ -15,6 +16,7 @@ use sqlx::PgPool;
 use tonic::{transport::Server, Request, Response, Status};
 use tower_http::trace::TraceLayer;
 use utils::env::EnvironmentValues;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 pub mod rinha {
     tonic::include_proto!("rinha");
@@ -136,10 +138,10 @@ impl Rinha for MyRinha {
 const BATCH_INSERT_INTERVAL_SECS: u64 = 2;
 
 pub async fn batch_insert_task(queue: Arc<deadqueue::unlimited::Queue<Pessoa>>, db: PgPool) {
-    let mut pessoas_to_insert = Vec::with_capacity(256);
+    let mut pessoas_to_insert = Vec::with_capacity(768);
     loop {
         tokio::time::sleep(Duration::from_secs(BATCH_INSERT_INTERVAL_SECS)).await;
-        while queue.len() > 0 && pessoas_to_insert.len() < 256 {
+        while queue.len() > 0 && pessoas_to_insert.len() < 768 {
             let input = queue.pop().await;
             pessoas_to_insert.push(input);
         }
@@ -168,12 +170,12 @@ pub async fn batch_insert_task(queue: Arc<deadqueue::unlimited::Queue<Pessoa>>, 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "[::]:50051".parse()?;
+    let env_values = EnvironmentValues::init();
     tracing_subscriber::fmt()
     .with_max_level(tracing::Level::from_str(&env_values.rust_log)?)
     .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .init();
-    let addr = "[::]:50051".parse()?;
-    let env_values = EnvironmentValues::init();
     let rinha_svc = MyRinha::from(&env_values).await?;
     tracing::info!(message = "Starting server.", %addr);
     tokio::spawn(batch_insert_task(rinha_svc.person_queue.clone(), rinha_svc.db.clone()));
