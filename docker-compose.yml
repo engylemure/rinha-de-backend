@@ -3,24 +3,28 @@ services:
   api1: &api
     # API - Instância 01
     #    image: api
-    build: ./
+    build: 
+      dockerfile: ./docker/api.Dockerfile
+      context: ./
     hostname: api01
     depends_on:
       - db
-      - jaeger
-      - otel_collector
+      - intermediary_api
     expose:
       - "80"
     env_file: ./env
     environment:
       - RUST_ENV=prod
       - RUST_LOG=info
-      - WITH_OTEL=false
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
+      - RINHA_URL=http://intermediary_api:50051
+      - TARGET_NAME=rinha
+      # - LOGGER_OUTPUT=stdout
+      # - LOGGER_OUTPUT=otel
+      # - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
     deploy:
       resources:
         limits:
-          cpus: '0.15'
+          cpus: '0.05'
           memory: '0.250GB'
   api2:
     # API - Instancia 02
@@ -42,17 +46,36 @@ services:
         limits:
           cpus: '0.15'
           memory: '0.250GB'
-  redis:
-    image: redis:7.0.12-alpine
-    command: redis-server --save "" --appendonly no --maxclients 20000
-    hostname: redis
-    ports:
-      - 6379:6379
+  intermediary_api:
+    build: 
+      dockerfile: ./docker/intermediary_api.Dockerfile
+      context: ./
+    hostname: intermediary_api
+    expose:
+      - "50051"
+    depends_on:
+      - db
+    env_file: ./env
+    environment:
+      - RUST_ENV=prod
+      - RUST_LOG=info
+      - TARGET_NAME=intermediary_api
     deploy:
       resources:
         limits:
-          cpus: '0.15'
+          cpus: '0.25'
           memory: '0.750GB'
+  # redis:
+  #   image: redis:7.0.12-alpine
+  #   command: redis-server --save "" --appendonly no --maxclients 20000
+  #   hostname: redis
+  #   ports:
+  #     - 6379:6379
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.15'
+  #         memory: '0.750GB'
   db:
     # Banco de dados
     image: postgres:15.4-alpine3.18
@@ -70,7 +93,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.9'
+          cpus: '1'
           memory: '1.5GB'
   jaeger:
     image: jaegertracing/all-in-one:latest

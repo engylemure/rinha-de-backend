@@ -1,3 +1,3 @@
 cd api
 
-./target/release/rinha
+./target/release/$TARGET_NAME

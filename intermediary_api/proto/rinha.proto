@@ -1,0 +1,36 @@
+syntax = "proto3";
+package rinha;
+
+service Rinha {
+  rpc PessoaById(PessoaByIdRequest) returns (PessoaReply);
+  rpc PessoaSearch(PessoaSearchRequest) returns (PessoaSearchReply);
+  rpc CreatePessoa(CreatePessoaRequest) returns (CreatePessoaReply);
+}
+
+message PessoaByIdRequest {
+  string id = 1;
+}
+
+message PessoaReply {
+  optional string json = 1;
+}
+
+message PessoaSearchRequest {
+  string term = 1;
+}
+
+message PessoaSearchReply {
+  optional string json = 1;
+}
+
+message CreatePessoaRequest {
+  string apelido = 1;
+  string nome = 2;
+  string nascimento = 3;
+  repeated string stack = 4;
+}
+
+message CreatePessoaReply {
+  optional string id = 1;
+  uint32 status = 2;
+}

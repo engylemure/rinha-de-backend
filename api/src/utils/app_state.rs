@@ -1,16 +1,11 @@
-use std::{sync::Arc, time::Duration};
-
 use sqlx::{postgres::PgPoolOptions, PgPool};
-
-use crate::models::pessoa::Pessoa;
-
+use crate::rinha::rinha_client::RinhaClient;
 use super::env::EnvironmentValues;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
-    pub redis: deadpool_redis::Pool,
-    pub person_queue: Arc<deadqueue::unlimited::Queue<Pessoa>>,
+    pub rinha_client: RinhaClient<tonic::transport::Channel>
 }
 
 impl AppState {
@@ -20,23 +15,9 @@ impl AppState {
             .min_connections(32)
             .connect(&env_values.database_url)
             .await?;
-        let redis = deadpool_redis::Config {
-            url: Some(env_values.redis_url.clone()),
-            pool: Some(deadpool_redis::PoolConfig {
-                max_size: 8192,
-                timeouts: deadpool_redis::Timeouts {
-                    wait: Some(Duration::from_secs(60)),
-                    create: Some(Duration::from_secs(60)),
-                    recycle: Some(Duration::from_secs(60)),
-                },
-            }),
-            connection: None,
-        }
-        .create_pool(Some(deadpool_redis::Runtime::Tokio1))?;
         Ok(Self {
             db,
-            redis,
-            person_queue: Arc::new(deadqueue::unlimited::Queue::new()),
+            rinha_client: RinhaClient::connect(env_values.rinha_url.clone()).await?,
         })
     }
 }

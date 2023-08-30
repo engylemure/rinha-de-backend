@@ -8,7 +8,6 @@ pub struct EnvironmentValues {
     pub rust_env: String,
     pub rust_log: String,
     pub logger: Option<LoggerOutput>,
-    pub rinha_url: String,
 }
 
 pub enum LoggerOutput {
@@ -45,10 +44,7 @@ impl EnvironmentValues {
             logger: std::env::var("LOGGER_OUTPUT")
                 .ok()
                 .map(|s| s.parse().ok())
-                .flatten(),
-            rinha_url: std::env::var("RINHA_URL")
-                .ok()
-                .unwrap_or(String::from("http://[::1]:50051"))
+                .flatten()
         }
     }
 }
