@@ -7,7 +7,7 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
     
 # Adding system dependencies
-RUN apk add --no-cache libpq libaio libstdc++ libc6-compat  musl musl-dev
+RUN apk add libpq libaio libstdc++ libc6-compat  musl musl-dev protoc protobuf-dev
 
 # Setting up working directory
 ENV HOME=/opt/app
@@ -21,6 +21,7 @@ COPY env.tmpl /opt/app
 # Application Setup
 ENTRYPOINT ["dockerize", "-template", "./env.tmpl:./api/.env"]
 
+ENV TARGET_NAME rinha
 RUN cd api && cargo build --release && cd target/release && rm -rf build deps examples incremental
 
 # Application Execution

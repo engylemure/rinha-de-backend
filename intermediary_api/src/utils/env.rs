@@ -8,12 +8,11 @@ pub struct EnvironmentValues {
     pub rust_env: String,
     pub rust_log: String,
     pub logger: Option<LoggerOutput>,
-    pub rinha_url: String,
 }
 
 pub enum LoggerOutput {
     Otel,
-    Stdout,
+    Stdout
 }
 
 impl FromStr for LoggerOutput {
@@ -23,10 +22,12 @@ impl FromStr for LoggerOutput {
         match s.to_lowercase().as_str() {
             "otel" => Ok(Self::Otel),
             "stdout" => Ok(Self::Stdout),
-            _ => Err(()),
+            _ => Err(())
         }
     }
 }
+
+
 
 impl EnvironmentValues {
     pub fn init() -> Self {
@@ -43,10 +44,7 @@ impl EnvironmentValues {
             logger: std::env::var("LOGGER_OUTPUT")
                 .ok()
                 .map(|s| s.parse().ok())
-                .flatten(),
-            rinha_url: std::env::var("RINHA_URL")
-                .ok()
-                .unwrap_or(String::from("http://[::1]:50051"))
+                .flatten()
         }
     }
 }

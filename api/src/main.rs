@@ -11,6 +11,10 @@ use actix_web::{web, App, HttpServer};
 use std::{net::SocketAddr, sync::Arc};
 use tracing_actix_web::TracingLogger;
 
+pub mod rinha {
+    tonic::include_proto!("rinha");
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let env_values = Arc::new(EnvironmentValues::init());
@@ -22,7 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = AppState::from(&env_values).await?;
     let socket: SocketAddr = format!("[::]:{}", env_values.server_port).parse()?;
     tracing::info!("Starting App Server at: {}", socket);
-    tokio::spawn(pessoa::batch_insert_task(app_state.clone(), env_values.clone()));
     let app_state = web::Data::new(app_state);
     if env_values.logger.is_none() {
         HttpServer::new(move || {
