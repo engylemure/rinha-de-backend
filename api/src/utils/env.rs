@@ -46,7 +46,7 @@ impl EnvironmentValues {
                 .flatten(),
             rinha_url: std::env::var("RINHA_URL")
                 .ok()
-                .unwrap_or(String::from("http://[::]:50051"))
+                .unwrap_or(String::from("http://[::]:50051")),
         }
     }
 }

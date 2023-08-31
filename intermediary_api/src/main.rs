@@ -1,22 +1,22 @@
 mod models;
 mod utils;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use std::str::FromStr;
 
 use dashmap::*;
 use models::pessoa::Pessoa;
 use rinha::rinha_server::{Rinha, RinhaServer};
 use rinha::{
-    CreatePessoaReply, CreatePessoaRequest, PessoaByIdRequest,
-    PessoaReply, PessoaSearchReply, PessoaSearchRequest,
+    CreatePessoaReply, CreatePessoaRequest, PessoaByIdRequest, PessoaReply, PessoaSearchReply,
+    PessoaSearchRequest,
 };
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tonic::{transport::Server, Request, Response, Status};
 use tower_http::trace::TraceLayer;
-use utils::env::EnvironmentValues;
 use tracing_subscriber::fmt::format::FmtSpan;
+use utils::env::EnvironmentValues;
 
 pub mod rinha {
     tonic::include_proto!("rinha");
@@ -173,12 +173,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50051".parse()?;
     let env_values = EnvironmentValues::init();
     tracing_subscriber::fmt()
-    .with_max_level(tracing::Level::from_str(&env_values.rust_log)?)
-    .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+        .with_max_level(tracing::Level::from_str(&env_values.rust_log)?)
+        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .init();
     let rinha_svc = MyRinha::from(&env_values).await?;
     tracing::info!(message = "Starting server.", %addr);
-    tokio::spawn(batch_insert_task(rinha_svc.person_queue.clone(), rinha_svc.db.clone()));
+    tokio::spawn(batch_insert_task(
+        rinha_svc.person_queue.clone(),
+        rinha_svc.db.clone(),
+    ));
     Server::builder()
         .layer(TraceLayer::new_for_grpc())
         .add_service(RinhaServer::new(rinha_svc))

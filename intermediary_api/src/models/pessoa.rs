@@ -1,8 +1,8 @@
+use crate::rinha::CreatePessoaRequest;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgRow, FromRow, Row};
 use uuid::Uuid;
-use crate::rinha::CreatePessoaRequest;
 
 impl CreatePessoaRequest {
     #[inline(always)]
@@ -10,9 +10,7 @@ impl CreatePessoaRequest {
         self.apelido.len() <= 32
             && self.nome.len() <= 100
             && NaiveDate::parse_from_str(&self.nascimento, "%Y-%m-%d").is_ok()
-            && self
-                .stack
-                .iter().all(|s| s.len() < 32)
+            && self.stack.iter().all(|s| s.len() < 32)
     }
 }
 
