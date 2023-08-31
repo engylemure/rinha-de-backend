@@ -8,15 +8,20 @@ pub struct PessoaInput {
     pub stack: Option<Vec<String>>,
 }
 
-
-
 impl From<PessoaInput> for crate::rinha::CreatePessoaRequest {
-    fn from(PessoaInput { apelido, nome, nascimento, stack }: PessoaInput) -> Self {
+    fn from(
+        PessoaInput {
+            apelido,
+            nome,
+            nascimento,
+            stack,
+        }: PessoaInput,
+    ) -> Self {
         Self {
             apelido,
             nascimento,
             nome,
-            stack: stack.unwrap_or_default()
+            stack: stack.unwrap_or_default(),
         }
     }
 }

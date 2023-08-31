@@ -1,11 +1,11 @@
-use sqlx::{postgres::PgPoolOptions, PgPool};
-use crate::rinha::rinha_client::RinhaClient;
 use super::env::EnvironmentValues;
+use crate::rinha::rinha_client::RinhaClient;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
-    pub rinha_client: RinhaClient<tonic::transport::Channel>
+    pub rinha_client: RinhaClient<tonic::transport::Channel>,
 }
 
 impl AppState {
