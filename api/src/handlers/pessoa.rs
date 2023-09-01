@@ -93,8 +93,8 @@ async fn set_cached_search(term: String, pessoas: String, app_state: web::Data<A
         let _ = redis::cmd("SET")
             .arg(format!("/pessoas/search/{}", term))
             .arg(pessoas)
-            .arg("EX")
-            .arg(15)
+            // .arg("EX")
+            // .arg(15)
             .query_async::<_, ()>(&mut conn)
             .await;
     }
