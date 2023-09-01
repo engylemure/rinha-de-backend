@@ -11,13 +11,13 @@ use opentelemetry::{
 use opentelemetry_otlp::WithExportConfig;
 
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{
-    fmt, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry,
-};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 
 pub fn init() {
     tracing_subscriber::registry()
-        .with(fmt::layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE))
+        .with(
+            fmt::layer().with_span_events(fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE),
+        )
         .with(EnvFilter::from_default_env())
         .init();
 }

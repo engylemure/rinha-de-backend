@@ -1,6 +1,5 @@
 mod models;
 mod utils;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +14,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tonic::{transport::Server, Request, Response, Status};
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 use utils::env::EnvironmentValues;
 
 pub mod rinha {
@@ -135,13 +134,15 @@ impl Rinha for MyRinha {
     }
 }
 
-const BATCH_INSERT_INTERVAL_SECS: u64 = 2;
-
-pub async fn batch_insert_task(queue: Arc<deadqueue::unlimited::Queue<Pessoa>>, db: PgPool) {
-    let mut pessoas_to_insert = Vec::with_capacity(768);
+pub async fn batch_insert_task(
+    queue: Arc<deadqueue::unlimited::Queue<Pessoa>>,
+    db: PgPool,
+    env_values: Arc<EnvironmentValues>,
+) {
+    let mut pessoas_to_insert = Vec::with_capacity(env_values.max_batch_insert_size);
     loop {
-        tokio::time::sleep(Duration::from_secs(BATCH_INSERT_INTERVAL_SECS)).await;
-        while queue.len() > 0 && pessoas_to_insert.len() < 768 {
+        tokio::time::sleep(Duration::from_secs(env_values.batch_insert_interval_secs)).await;
+        while queue.len() > 0 && pessoas_to_insert.len() < env_values.max_batch_insert_size {
             let input = queue.pop().await;
             pessoas_to_insert.push(input);
         }
@@ -171,21 +172,31 @@ pub async fn batch_insert_task(queue: Arc<deadqueue::unlimited::Queue<Pessoa>>, 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50051".parse()?;
-    let env_values = EnvironmentValues::init();
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::from_str(&env_values.rust_log)?)
-        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+    let env_values = Arc::new(EnvironmentValues::init());
+    tracing_subscriber::registry()
+        .with(
+            fmt::layer().with_span_events(fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE),
+        )
+        .with(EnvFilter::from_default_env())
         .init();
     let rinha_svc = MyRinha::from(&env_values).await?;
     tracing::info!(message = "Starting server.", %addr);
     tokio::spawn(batch_insert_task(
         rinha_svc.person_queue.clone(),
         rinha_svc.db.clone(),
+        env_values.clone(),
     ));
-    Server::builder()
-        .layer(TraceLayer::new_for_grpc())
-        .add_service(RinhaServer::new(rinha_svc))
-        .serve(addr)
-        .await?;
+    if env_values.logger.is_none() {
+        Server::builder()
+            .add_service(RinhaServer::new(rinha_svc))
+            .serve(addr)
+            .await?;
+    } else {
+        Server::builder()
+            .layer(TraceLayer::new_for_grpc())
+            .add_service(RinhaServer::new(rinha_svc))
+            .serve(addr)
+            .await?;
+    }
     Ok(())
 }
