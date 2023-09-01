@@ -6,8 +6,10 @@ pub struct EnvironmentValues {
     pub database_url: String,
     pub server_port: u16,
     pub rust_env: String,
-    pub rust_log: String,
     pub logger: Option<LoggerOutput>,
+    pub db_pool_max_size: usize,
+    pub max_batch_insert_size: usize,
+    pub batch_insert_interval_secs: u64,
 }
 
 pub enum LoggerOutput {
@@ -38,11 +40,25 @@ impl EnvironmentValues {
                 .parse()
                 .expect("SERVER_PORT must be a number"),
             rust_env: env::var("RUST_ENV").unwrap_or_else(|_| "dev".into()),
-            rust_log: std::env::var("RUST_LOG").unwrap_or_else(|_| "debug".to_owned()),
             logger: std::env::var("LOGGER_OUTPUT")
                 .ok()
                 .map(|s| s.parse().ok())
                 .flatten(),
+            db_pool_max_size: std::env::var("DATABASE_POOL_MAX_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(256),
+            max_batch_insert_size: std::env::var("MAX_BATCH_INSERT_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(256),
+            batch_insert_interval_secs: std::env::var("BATCH_INSERT_INTERVAL_SECS")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(1),
         }
     }
 }

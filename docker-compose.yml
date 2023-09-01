@@ -15,17 +15,22 @@ services:
     env_file: ./env
     environment:
       - RUST_ENV=prod
-      - RUST_LOG=debug
+      - RUST_LOG=info
       - RINHA_URL=http://intermediary_api:50051
       - TARGET_NAME=rinha
       - LOGGER_OUTPUT=stdout
       # - LOGGER_OUTPUT=otel
       # - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
+    # ulimits:
+    #   nproc: 65535
+    #   nofile:
+    #     soft: 20000
+    #     hard: 40000
     deploy:
       resources:
         limits:
           cpus: '0.15'
-          memory: '0.25GB'
+          memory: '0.4GB'
   api2:
     # API - Instancia 02
     <<: *api
@@ -45,7 +50,7 @@ services:
       resources:
         limits:
           cpus: '0.15'
-          memory: '0.25GB'
+          memory: '0.4GB'
   intermediary_api:
     build: 
       dockerfile: ./docker/intermediary_api.Dockerfile
@@ -59,12 +64,15 @@ services:
     environment:
       - RUST_ENV=prod
       - RUST_LOG=info
+      - LOGGER_OUTPUT=stdout
       - TARGET_NAME=intermediary_api
+      - MAX_BATCH_INSERT_SIZE=1024
+      - BATCH_INSERT_INTERVAL_SECS=1
     deploy:
       resources:
         limits:
-          cpus: '0.15'
-          memory: '0.650GB'
+          cpus: '0.25'
+          memory: '0.5GB'
   # redis:
   #   image: redis:7.0.12-alpine
   #   command: redis-server --save "" --appendonly no --maxclients 20000
@@ -93,8 +101,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.9'
-          memory: '1.8GB'
+          cpus: '0.8'
+          memory: '1.5GB'
   jaeger:
     image: jaegertracing/all-in-one:latest
     hostname: jaeger

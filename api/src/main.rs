@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let env_values = EnvironmentValues::init();
     match env_values.logger {
         Some(LoggerOutput::Otel) => telemetry::init_otel(),
-        Some(LoggerOutput::Stdout) => telemetry::init(&env_values)?,
+        Some(LoggerOutput::Stdout) => telemetry::init(),
         _ => (),
     }
     let app_state = AppState::from(&env_values).await?;
