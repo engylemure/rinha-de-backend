@@ -8,11 +8,15 @@ pub struct EnvironmentValues {
     pub rust_env: String,
     pub rust_log: String,
     pub logger: Option<LoggerOutput>,
+    pub db_pool_max_size: u32,
+    pub redis_pool_max_size: usize,
+    pub max_batch_insert_size: usize,
+    pub batch_insert_interval_secs: u64,
 }
 
 pub enum LoggerOutput {
     Otel,
-    Stdout
+    Stdout,
 }
 
 impl FromStr for LoggerOutput {
@@ -22,12 +26,10 @@ impl FromStr for LoggerOutput {
         match s.to_lowercase().as_str() {
             "otel" => Ok(Self::Otel),
             "stdout" => Ok(Self::Stdout),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
-
-
 
 impl EnvironmentValues {
     pub fn init() -> Self {
@@ -44,7 +46,27 @@ impl EnvironmentValues {
             logger: std::env::var("LOGGER_OUTPUT")
                 .ok()
                 .map(|s| s.parse().ok())
+                .flatten(),
+            db_pool_max_size: std::env::var("DATABASE_POOL_MAX_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
                 .flatten()
+                .unwrap_or(256),
+            redis_pool_max_size: std::env::var("REDIS_POOL_MAX_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(1024),
+            max_batch_insert_size: std::env::var("MAX_BATCH_INSERT_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(256),
+            batch_insert_interval_secs: std::env::var("BATCH_INSERT_INTERVAL_SECS")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(1),
         }
     }
 }

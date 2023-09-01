@@ -1,8 +1,8 @@
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, time::Duration, sync::Arc};
 
 use crate::{
     models::pessoa::{Pessoa, PessoaInput},
-    utils::app_state::AppState,
+    utils::{app_state::AppState, env::EnvironmentValues},
 };
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
@@ -153,14 +153,12 @@ pub async fn count(app_state: web::Data<AppState>) -> impl Responder {
     }
 }
 
-const BATCH_INSERT_INTERVAL_SECS: u64 = 2;
-
-pub async fn batch_insert_task(app_state: AppState) {
+pub async fn batch_insert_task(app_state: AppState, env_values: Arc<EnvironmentValues>) {
     let mut apelidos = HashSet::<String>::new();
-    let mut pessoas_to_insert = Vec::with_capacity(512);
+    let mut pessoas_to_insert = Vec::with_capacity(env_values.max_batch_insert_size);
     loop {
-        tokio::time::sleep(Duration::from_secs(BATCH_INSERT_INTERVAL_SECS)).await;
-        while app_state.person_queue.len() > 0 && pessoas_to_insert.len() < 512 {
+        tokio::time::sleep(Duration::from_secs(env_values.batch_insert_interval_secs)).await;
+        while app_state.person_queue.len() > 0 && pessoas_to_insert.len() < env_values.max_batch_insert_size {
             let input = app_state.person_queue.pop().await;
             if apelidos.contains(&input.apelido) {
                 continue;

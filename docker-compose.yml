@@ -7,16 +7,19 @@ services:
     hostname: api01
     depends_on:
       - db
-      - jaeger
-      - otel_collector
+      - redis
     expose:
       - "80"
     env_file: ./env
     environment:
       - RUST_ENV=prod
       - RUST_LOG=info
-      - WITH_OTEL=false
+      - LOGGER_OUTPUT=stdout
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
+      - DATABASE_POOL_MAX_SIZE=256
+      - REDIS_POOL_MAX_SIZE=9216
+      - MAX_BATCH_INSERT_SIZE=1024
+      - BATCH_INSERT_INTERVAL_SECS=1
     deploy:
       resources:
         limits:

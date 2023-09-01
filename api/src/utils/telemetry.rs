@@ -9,19 +9,17 @@ use opentelemetry::{
     KeyValue,
 };
 use opentelemetry_otlp::WithExportConfig;
-use std::str::FromStr;
 
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, EnvFilter, Registry};
+use tracing_subscriber::{
+    fmt, fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry,
+};
 
-use super::env::EnvironmentValues;
-
-pub fn init(env_values: &EnvironmentValues) -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::from_str(&env_values.rust_log)?)
-        .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
+pub fn init() {
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE))
+        .with(EnvFilter::from_default_env())
         .init();
-    Ok(())
 }
 
 pub fn init_otel() {
