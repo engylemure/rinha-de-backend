@@ -2,7 +2,7 @@
 
 A implementation for the challenge [rinha de backend](https://github.com/zanfranceschi/rinha-de-backend-2023-q3), inspired(parts of it are copy pasted) from [rinha-backend-rust](https://github.com/viniciusfonseca/rinha-backend-rust)
 
-### Current local Results for my Macbook M1 16gb
+### Current local Results for a Ryzen 7 3800x, 32gb ddr4 3200mhz ram and NVME 7000r/6000w mb/s
  - Without Tracing: 46576
  ![local results for the implementation with cors and without tracing](./without_tracing.png)
  - With StdOut Tracing: 46576
