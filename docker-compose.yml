@@ -17,11 +17,11 @@ services:
       - RUST_LOG=info
       - RINHA_URL=http://intermediary_api:50051
       - TARGET_NAME=rinha
-      - LOGGER_OUTPUT=stdout
+      # - LOGGER_OUTPUT=stdout
     deploy:
       resources:
         limits:
-          cpus: '0.15'
+          cpus: '0.2'
           memory: '0.4GB'
   api2:
     # API - Instancia 02
@@ -58,13 +58,13 @@ services:
       - RUST_ENV=prod
       - RUST_LOG=info
       - TARGET_NAME=intermediary_api
-      - MAX_BATCH_INSERT_SIZE=2048
+      - MAX_BATCH_INSERT_SIZE=4096
       - BATCH_MAX_WAIT_ON_INSERT_CHANNEL=1
-      - LOGGER_OUTPUT=stdout
+      # - LOGGER_OUTPUT=stdout
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.45'
           memory: '0.5GB'
   db:
     # Banco de dados
@@ -83,7 +83,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.8'
+          cpus: '0.5'
           memory: '1.0GB'
 networks:
   default:

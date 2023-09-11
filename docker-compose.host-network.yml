@@ -22,7 +22,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.15'
+          cpus: '0.2'
           memory: '0.4GB'
   api2:
     # API - Instancia 02
@@ -34,7 +34,7 @@ services:
       - RINHA_URL=http://localhost:50051
       - SERVER_PORT=81
       - TARGET_NAME=rinha
-      - LOGGER_OUTPUT=stdout
+      # - LOGGER_OUTPUT=stdout
   nginx:
     # Load Balancer
     image: nginx:latest
@@ -44,8 +44,6 @@ services:
     depends_on:
       - api1
       - api2
-    ports:
-      - "9999:9999"
     deploy:
       resources:
         limits:
@@ -57,10 +55,6 @@ services:
       context: ./
     hostname: intermediary_api
     network_mode: 'host'
-    ports:
-      - 50051:50051
-    expose:
-      - "50051"
     depends_on:
       - db
     env_file: ./env
@@ -71,11 +65,11 @@ services:
       - MAX_BATCH_INSERT_SIZE=2048
       - BATCH_INSERT_INTERVAL_SECS=1
       - DB_HOST=localhost
-      - LOGGER_OUTPUT=stdout
+      # - LOGGER_OUTPUT=stdout
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.45'
           memory: '0.5GB'
   db:
     # Banco de dados
@@ -90,12 +84,10 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgresql.conf:/docker-entrypoint-initdb.d/postgresql.conf
     command: postgres -c config_file=/docker-entrypoint-initdb.d/postgresql.conf
-    ports:
-      - 5432:5432
     deploy:
       resources:
         limits:
-          cpus: '0.8'
+          cpus: '0.5'
           memory: '1.0GB'
 # networks:
 #   default:
