@@ -9,6 +9,46 @@ receivers:
       grpc:
       http:
         
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 1s
+    container.cpu.usage.total:
+        enabled: true
+      container.cpu.throttling_data.periods:
+        enabled: true
+      container.cpu.throttling_data.throttled_periods:
+        enabled: true
+      # `container.cpu.percent` is deprecated in favor of `container.cpu.utilization` in opentelemetry-collector-contrib v0.79.0
+      container.cpu.utilization:
+        enabled: true
+      container.cpu.percent:
+        enabled: false
+      container.memory.usage.limit:
+        enabled: true
+      container.memory.usage.total:
+        enabled: true
+      container.memory.percent:
+        enabled: true
+      container.blockio.io_service_bytes_recursive:
+        enabled: true
+      container.network.io.usage.rx_bytes:
+        enabled: true
+      container.network.io.usage.tx_bytes:
+        enabled: true
+      container.network.io.usage.rx_dropped:
+        enabled: true
+      container.network.io.usage.tx_dropped:
+        enabled: true
+      container.network.io.usage.rx_errors:
+        enabled: true
+      container.network.io.usage.tx_errors:
+        enabled: true
+      container.network.io.usage.rx_packets:
+        enabled: true
+      container.network.io.usage.tx_packets:
+        enabled: true
+      container.pids.count:
+        enabled: true
 exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"

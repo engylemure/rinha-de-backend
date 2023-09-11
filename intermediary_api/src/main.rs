@@ -7,18 +7,24 @@ use dashmap::*;
 use models::pessoa::Pessoa;
 use rinha::rinha_server::{Rinha, RinhaServer};
 use rinha::{
-    CreatePessoaReply, CreatePessoaRequest, PessoaByIdRequest, PessoaReply, PessoaSearchReply,
-    PessoaSearchRequest,
+    CountPessoaReply, CreatePessoaReply, CreatePessoaRequest, PessoaByIdRequest, PessoaReply,
+    PessoaSearchReply, PessoaSearchRequest, CountPessoaRequest
 };
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
+use tokio::select;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 use tonic::{transport::Server, Request, Response, Status};
+use tonic_tracing_opentelemetry::middleware::server;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-use utils::env::EnvironmentValues;
+use utils::env::{EnvironmentValues, LoggerOutput};
+
+use crate::utils::telemetry;
 
 pub mod rinha {
     tonic::include_proto!("rinha");
+    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("rinha_descriptor");
 }
 
 #[derive(Debug)]
@@ -26,24 +32,27 @@ pub struct MyRinha {
     pub pessoa_by_apelido_exists_set: DashSet<String>,
     pub pessoa_by_id_map: DashMap<String, String>,
     pub pessoa_search_map: DashMap<String, String>,
-    pub person_queue: Arc<deadqueue::unlimited::Queue<Pessoa>>,
+    pub pessoa_sender: mpsc::UnboundedSender<Pessoa>,
     pub db: PgPool,
 }
 
 impl MyRinha {
-    pub async fn from(env_values: &EnvironmentValues) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn from(env_values: &EnvironmentValues) -> Result<(Self, UnboundedReceiver<Pessoa>), Box<dyn std::error::Error>> {
         let db = PgPoolOptions::new()
-            .max_connections(256)
-            .min_connections(32)
+            .max_connections(env_values.db_pool_max_size)
             .connect(&env_values.database_url)
             .await?;
-        Ok(Self {
-            db,
-            person_queue: Arc::new(deadqueue::unlimited::Queue::new()),
-            pessoa_by_apelido_exists_set: Default::default(),
-            pessoa_by_id_map: Default::default(),
-            pessoa_search_map: Default::default(),
-        })
+        let (pessoa_sender, pessoa_receiver) = mpsc::unbounded_channel();
+        Ok((
+            Self {
+                db,
+                pessoa_sender,
+                pessoa_by_apelido_exists_set: Default::default(),
+                pessoa_by_id_map: Default::default(),
+                pessoa_search_map: Default::default(),
+            },
+            pessoa_receiver
+        ))
     }
 }
 
@@ -120,7 +129,7 @@ impl Rinha for MyRinha {
             self.pessoa_by_id_map
                 .insert(id.clone(), serde_json::to_string(&pessoa).unwrap());
             self.pessoa_by_apelido_exists_set.insert(id.clone());
-            self.person_queue.push(pessoa);
+            let _ = self.pessoa_sender.send(pessoa);
             Ok(Response::new(CreatePessoaReply {
                 id: Some(id),
                 status: 201,
@@ -132,40 +141,76 @@ impl Rinha for MyRinha {
             }))
         }
     }
+
+    async fn count_pessoa(
+        &self,
+        _: Request<CountPessoaRequest>,
+    ) -> Result<Response<CountPessoaReply>, Status> {
+        let amount = sqlx::query_as::<_, (i64,)>("SELECT COUNT(id) FROM pessoas;")
+            .fetch_one(&self.db)
+            .await;
+        match amount {
+            Ok(amount) => Ok(Response::new(CountPessoaReply {
+                amount: amount.0 as u64
+            })),
+            _ => Err(Status::unavailable("Internal server error")),
+        }
+    }
+}
+
+
+async fn batch_insert(pessoas_to_insert: &mut Vec<Pessoa>, db: &PgPool) {
+    if pessoas_to_insert.len() > 0 {
+        let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+            "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) ",
+        );
+        query.push_values(pessoas_to_insert.drain(..), |mut b, pessoa| {
+            b.push_bind(pessoa.id)
+                .push_bind(pessoa.nome)
+                .push_bind(pessoa.apelido)
+                .push_bind(pessoa.nascimento)
+                .push_bind(pessoa.stack.map(|stacks| stacks.join(" ")));
+        });
+        query.push(" ON CONFLICT DO NOTHING;");
+        if let Ok(mut tx) = db.begin().await {
+            let _ = if query.build().execute(&mut *tx).await.is_ok() {
+                tx.commit().await
+            } else {
+                tx.rollback().await
+            };
+        }
+    }
+}
+
+enum PessoaOrTimeout {
+    ReceiverClosed,
+    Timeout,
+    Pessoa(Pessoa)
 }
 
 pub async fn batch_insert_task(
-    queue: Arc<deadqueue::unlimited::Queue<Pessoa>>,
+    mut pessoa_receiver: UnboundedReceiver<Pessoa>,
     db: PgPool,
     env_values: Arc<EnvironmentValues>,
 ) {
-    let mut pessoas_to_insert = Vec::with_capacity(env_values.max_batch_insert_size);
+    let mut pessoas_to_insert = Vec::with_capacity(env_values.batch_max_insert_size);
     loop {
-        tokio::time::sleep(Duration::from_secs(env_values.batch_insert_interval_secs)).await;
-        while queue.len() > 0 && pessoas_to_insert.len() < env_values.max_batch_insert_size {
-            let input = queue.pop().await;
-            pessoas_to_insert.push(input);
+        let pessoa_fut = pessoa_receiver.recv();
+        let sleep_fut = tokio::time::sleep(Duration::from_secs(env_values.batch_max_wait_on_insert_channel));
+        match select! {
+            pessoa = pessoa_fut => pessoa.map(PessoaOrTimeout::Pessoa).unwrap_or(PessoaOrTimeout::ReceiverClosed),
+            _ = sleep_fut => PessoaOrTimeout::Timeout,
+        } {
+            PessoaOrTimeout::Pessoa(pessoa) => {
+                pessoas_to_insert.push(pessoa);
+                if pessoas_to_insert.len() == env_values.batch_max_insert_size {
+                    batch_insert(&mut pessoas_to_insert, &db).await
+                }
+            },
+            PessoaOrTimeout::Timeout => batch_insert(&mut pessoas_to_insert, &db).await,
+            PessoaOrTimeout::ReceiverClosed => break,
         }
-        if pessoas_to_insert.len() > 0 {
-            let mut query = sqlx::QueryBuilder::<sqlx::Postgres>::new(
-                "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) ",
-            );
-            query.push_values(pessoas_to_insert.drain(..), |mut b, pessoa| {
-                b.push_bind(pessoa.id)
-                    .push_bind(pessoa.nome)
-                    .push_bind(pessoa.apelido)
-                    .push_bind(pessoa.nascimento)
-                    .push_bind(pessoa.stack.map(|stacks| stacks.join(" ")));
-            });
-            query.push(" ON CONFLICT DO NOTHING;");
-            if let Ok(mut tx) = db.begin().await {
-                let _ = if query.build().execute(&mut *tx).await.is_ok() {
-                    tx.commit().await
-                } else {
-                    tx.rollback().await
-                };
-            }
-        }
+        
     }
 }
 
@@ -173,30 +218,66 @@ pub async fn batch_insert_task(
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::]:50051".parse()?;
     let env_values = Arc::new(EnvironmentValues::init());
-    tracing_subscriber::registry()
-        .with(
-            fmt::layer().with_span_events(fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE),
-        )
-        .with(EnvFilter::from_default_env())
-        .init();
-    let rinha_svc = MyRinha::from(&env_values).await?;
+    match env_values.logger {
+        Some(LoggerOutput::Otel) => telemetry::init_otel(),
+        Some(LoggerOutput::Stdout) => telemetry::init(),
+        _ => (),
+    }
+    let (mut health_reporter, health_service) = tonic_health::server::health_reporter();
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(rinha::FILE_DESCRIPTOR_SET)
+        .build()?;
+    let (rinha_svc, pessoa_receiver) = MyRinha::from(&env_values).await?;
+    let db_pool = rinha_svc.db.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            if db_pool.acquire().await.is_ok() {
+                health_reporter.set_serving::<RinhaServer<MyRinha>>().await;
+            } else {
+                health_reporter
+                    .set_not_serving::<RinhaServer<MyRinha>>()
+                    .await;
+            }
+        }
+    });
     tracing::info!(message = "Starting server.", %addr);
     tokio::spawn(batch_insert_task(
-        rinha_svc.person_queue.clone(),
+        pessoa_receiver,
         rinha_svc.db.clone(),
         env_values.clone(),
     ));
-    if env_values.logger.is_none() {
-        Server::builder()
-            .add_service(RinhaServer::new(rinha_svc))
-            .serve(addr)
-            .await?;
-    } else {
-        Server::builder()
-            .layer(TraceLayer::new_for_grpc())
-            .add_service(RinhaServer::new(rinha_svc))
-            .serve(addr)
-            .await?;
+    match env_values.logger {
+        Some(LoggerOutput::Otel) => {
+            Server::builder()
+                .layer(server::OtelGrpcLayer::default())
+                .add_service(RinhaServer::new(rinha_svc))
+                .add_service(health_service)
+                .add_service(reflection_service)
+                .serve(addr)
+                .await?
+        }
+        Some(LoggerOutput::Stdout) => {
+            Server::builder()
+                .layer(TraceLayer::new_for_grpc())
+                .add_service(RinhaServer::new(rinha_svc))
+                .add_service(health_service)
+                .add_service(reflection_service)
+                .serve(addr)
+                .await?
+        }
+        None => {
+            Server::builder()
+                .add_service(health_service)
+                .add_service(reflection_service)
+                .add_service(RinhaServer::new(rinha_svc))
+                .serve(addr)
+                .await?
+        }
+    }
+    // Ensure all spans have been shipped.
+    if let Some(LoggerOutput::Otel) = env_values.logger {
+        opentelemetry::global::shutdown_tracer_provider();
     }
     Ok(())
 }

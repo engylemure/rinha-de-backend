@@ -8,7 +8,7 @@ use crate::utils::env::{EnvironmentValues, LoggerOutput};
 use crate::utils::telemetry;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 use std::time::Duration;
 use tracing_actix_web::TracingLogger;
 
@@ -36,9 +36,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .configure(pessoa::config)
         })
         .keep_alive(Duration::from_secs(200))
-        .max_connection_rate(512)
-        .max_connections(50000)
-        .backlog(4096)
         .bind(&socket)?
         .run()
         .await?;
@@ -51,9 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .configure(pessoa::config)
         })
         .keep_alive(Duration::from_secs(200))
-        .max_connection_rate(512)
-        .max_connections(50000)
-        .backlog(4096)
         .bind(&socket)?
         .run()
         .await?;

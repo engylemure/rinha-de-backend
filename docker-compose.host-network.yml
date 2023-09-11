@@ -7,6 +7,7 @@ services:
       dockerfile: ./docker/api.Dockerfile
       context: ./
     hostname: api01
+    network_mode: 'host'
     depends_on:
       - intermediary_api
     expose:
@@ -15,7 +16,7 @@ services:
     environment:
       - RUST_ENV=prod
       - RUST_LOG=info
-      - RINHA_URL=http://intermediary_api:50051
+      - RINHA_URL=http://localhost:50051
       - TARGET_NAME=rinha
       - LOGGER_OUTPUT=stdout
     deploy:
@@ -27,11 +28,19 @@ services:
     # API - Instancia 02
     <<: *api
     hostname: api02
+    environment:
+      - RUST_ENV=prod
+      - RUST_LOG=info
+      - RINHA_URL=http://localhost:50051
+      - SERVER_PORT=81
+      - TARGET_NAME=rinha
+      - LOGGER_OUTPUT=stdout
   nginx:
     # Load Balancer
     image: nginx:latest
+    network_mode: 'host'
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.host-network.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api1
       - api2
@@ -47,6 +56,7 @@ services:
       dockerfile: ./docker/intermediary_api.Dockerfile
       context: ./
     hostname: intermediary_api
+    network_mode: 'host'
     ports:
       - 50051:50051
     expose:
@@ -59,7 +69,8 @@ services:
       - RUST_LOG=info
       - TARGET_NAME=intermediary_api
       - MAX_BATCH_INSERT_SIZE=2048
-      - BATCH_MAX_WAIT_ON_INSERT_CHANNEL=1
+      - BATCH_INSERT_INTERVAL_SECS=1
+      - DB_HOST=localhost
       - LOGGER_OUTPUT=stdout
     deploy:
       resources:
@@ -69,6 +80,7 @@ services:
   db:
     # Banco de dados
     image: postgres:15.4-alpine3.18
+    network_mode: 'host'
     hostname: db
     environment:
       POSTGRES_PASSWORD: root
@@ -85,7 +97,7 @@ services:
         limits:
           cpus: '0.8'
           memory: '1.0GB'
-networks:
-  default:
-    driver: bridge
-    name: rinha
+# networks:
+#   default:
+#     driver: bridge
+#     name: rinha

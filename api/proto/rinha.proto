@@ -5,6 +5,7 @@ service Rinha {
   rpc PessoaById(PessoaByIdRequest) returns (PessoaReply);
   rpc PessoaSearch(PessoaSearchRequest) returns (PessoaSearchReply);
   rpc CreatePessoa(CreatePessoaRequest) returns (CreatePessoaReply);
+  rpc CountPessoa(CountPessoaRequest) returns (CountPessoaReply);
 }
 
 message PessoaByIdRequest {
@@ -33,4 +34,10 @@ message CreatePessoaRequest {
 message CreatePessoaReply {
   optional string id = 1;
   uint32 status = 2;
+}
+
+message CountPessoaRequest {}
+
+message CountPessoaReply {
+  uint64 amount = 1;
 }

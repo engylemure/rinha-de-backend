@@ -7,9 +7,9 @@ pub struct EnvironmentValues {
     pub server_port: u16,
     pub rust_env: String,
     pub logger: Option<LoggerOutput>,
-    pub db_pool_max_size: usize,
-    pub max_batch_insert_size: usize,
-    pub batch_insert_interval_secs: u64,
+    pub db_pool_max_size: u32,
+    pub batch_max_insert_size: usize,
+    pub batch_max_wait_on_insert_channel: u64,
 }
 
 pub enum LoggerOutput {
@@ -49,12 +49,12 @@ impl EnvironmentValues {
                 .ok()
                 .flatten()
                 .unwrap_or(256),
-            max_batch_insert_size: std::env::var("MAX_BATCH_INSERT_SIZE")
+            batch_max_insert_size: std::env::var("BATCH_MAX_INSERT_SIZE")
                 .map(|s| s.parse().ok())
                 .ok()
                 .flatten()
                 .unwrap_or(256),
-            batch_insert_interval_secs: std::env::var("BATCH_INSERT_INTERVAL_SECS")
+            batch_max_wait_on_insert_channel: std::env::var("BATCH_MAX_WAIT_ON_INSERT_CHANNEL")
                 .map(|s| s.parse().ok())
                 .ok()
                 .flatten()
