@@ -115,10 +115,20 @@ services:
     image: otel/opentelemetry-collector-contrib:latest
     volumes:
       - ./otel-collector-config-connector.yml:/etc/otelcol/otel-collector-config.yml
-      - /var/run/docker.sock:/var/run/docker.sock
     command: --config /etc/otelcol/otel-collector-config.yml
     depends_on:
       - jaeger
+  c_advisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    ports:
+      - 8080:8080
 networks:
   default:
     driver: bridge
