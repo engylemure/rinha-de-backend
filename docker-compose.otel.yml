@@ -17,7 +17,9 @@ services:
       - RUST_LOG=info
       - RINHA_URL=http://intermediary_api:50051
       - TARGET_NAME=rinha
-      - LOGGER_OUTPUT=stdout
+      - LOGGER_OUTPUT=otel
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
+      - OTEL_SERVICE_NAME=rinha-de-backend-api
     deploy:
       resources:
         limits:
@@ -58,9 +60,12 @@ services:
       - RUST_ENV=prod
       - RUST_LOG=info
       - TARGET_NAME=intermediary_api
-      - MAX_BATCH_INSERT_SIZE=2048
-      - BATCH_MAX_WAIT_ON_INSERT_CHANNEL=1
-      - LOGGER_OUTPUT=stdout
+      - MAX_BATCH_INSERT_SIZE=1024
+      - BATCH_INSERT_INTERVAL_SECS=1
+      - LOGGER_OUTPUT=otel
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel_collector:4317
+      - OTEL_SERVICE_NAME=rinha-de-backend-intermediary_api
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
     deploy:
       resources:
         limits:
@@ -85,6 +90,35 @@ services:
         limits:
           cpus: '0.8'
           memory: '1.0GB'
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    hostname: jaeger
+    depends_on:
+      - prometheus
+    volumes:
+      - "./jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json
+    environment:
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+      - PROMETHEUS_QUERY_SUPPORT_SPANMETRICS_CONNECTOR=true
+      - LOG_LEVEL=debug
+    ports:
+      - 16686:16686
+  prometheus:
+    hostname: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+  otel_collector:
+    hostname: otel_collector
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-collector-config-connector.yml:/etc/otelcol/otel-collector-config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --config /etc/otelcol/otel-collector-config.yml
+    depends_on:
+      - jaeger
 networks:
   default:
     driver: bridge

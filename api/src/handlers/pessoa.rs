@@ -1,6 +1,6 @@
 use crate::{
     models::pessoa::PessoaInput,
-    rinha::{PessoaByIdRequest, PessoaSearchRequest},
+    rinha::{CountPessoaRequest, PessoaByIdRequest, PessoaSearchRequest},
     utils::app_state::AppState,
 };
 use actix_web::{http::StatusCode, web, HttpResponse, Responder};
@@ -80,11 +80,15 @@ pub async fn all(input: web::Query<SearchInput>, app_state: web::Data<AppState>)
 
 #[actix_web::get("/contagem-pessoas")]
 pub async fn count(app_state: web::Data<AppState>) -> impl Responder {
-    let amount = sqlx::query_as::<_, (i64,)>("SELECT COUNT(id) FROM pessoas;")
-        .fetch_one(&app_state.db)
-        .await;
-    match amount {
-        Ok(amount) => HttpResponse::Ok().json(amount.0),
+    match app_state
+        .rinha_client
+        .clone()
+        .count_pessoa(tonic::Request::new(CountPessoaRequest {}))
+        .await
+        .ok()
+        .map(|res| res.into_inner().amount)
+    {
+        Some(amount) => HttpResponse::Ok().json(amount),
         _ => HttpResponse::InternalServerError().finish(),
     }
 }

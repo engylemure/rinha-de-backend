@@ -36,9 +36,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .configure(pessoa::config)
         })
         .keep_alive(Duration::from_secs(200))
-        .max_connection_rate(512)
-        .max_connections(50000)
-        .backlog(4096)
         .bind(&socket)?
         .run()
         .await?;
@@ -51,9 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .configure(pessoa::config)
         })
         .keep_alive(Duration::from_secs(200))
-        .max_connection_rate(512)
-        .max_connections(50000)
-        .backlog(4096)
         .bind(&socket)?
         .run()
         .await?;
