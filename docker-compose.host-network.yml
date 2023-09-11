@@ -62,7 +62,7 @@ services:
       - RUST_ENV=prod
       - RUST_LOG=info
       - TARGET_NAME=intermediary_api
-      - BATCH_MAX_INSERT_SIZE=4096
+      - BATCH_MAX_INSERT_SIZE=2048
       - BATCH_MAX_WAIT_ON_INSERT_CHANNEL=1
       - DB_HOST=localhost
       # - LOGGER_OUTPUT=stdout

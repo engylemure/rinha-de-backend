@@ -8,8 +8,8 @@ use crate::utils::env::{EnvironmentValues, LoggerOutput};
 use crate::utils::telemetry;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
-use std::{net::SocketAddr, sync::Arc};
 use std::time::Duration;
+use std::{net::SocketAddr, sync::Arc};
 use tracing_actix_web::TracingLogger;
 
 pub mod rinha {

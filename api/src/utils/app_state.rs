@@ -18,15 +18,23 @@ impl AppState {
             let mut wait = 1;
             loop {
                 match Channel::from_shared(env_values.rinha_url.clone())?
-                .connect()
-                .await {
+                    .connect()
+                    .await
+                {
                     Ok(channel) => break channel,
                     err => {
                         if wait > 10 {
-                            tracing::error!("Rinha GRPC server not available at {}", env_values.rinha_url);
+                            tracing::error!(
+                                "Rinha GRPC server not available at {}",
+                                env_values.rinha_url
+                            );
                             err?;
                         }
-                        tracing::warn!("Rinha GRPC server not available at {} we will wait for {}", env_values.rinha_url, chrono::Duration::seconds(wait));
+                        tracing::warn!(
+                            "Rinha GRPC server not available at {} we will wait for {}",
+                            env_values.rinha_url,
+                            chrono::Duration::seconds(wait)
+                        );
                         tokio::time::sleep(Duration::from_secs(wait as u64)).await;
                         wait *= 2;
                     }

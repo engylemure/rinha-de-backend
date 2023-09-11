@@ -7,8 +7,8 @@ use dashmap::*;
 use models::pessoa::Pessoa;
 use rinha::rinha_server::{Rinha, RinhaServer};
 use rinha::{
-    CountPessoaReply, CreatePessoaReply, CreatePessoaRequest, PessoaByIdRequest, PessoaReply,
-    PessoaSearchReply, PessoaSearchRequest, CountPessoaRequest
+    CountPessoaReply, CountPessoaRequest, CreatePessoaReply, CreatePessoaRequest,
+    PessoaByIdRequest, PessoaReply, PessoaSearchReply, PessoaSearchRequest,
 };
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
@@ -33,11 +33,14 @@ pub struct MyRinha {
     pub pessoa_by_id_map: DashMap<String, String>,
     pub pessoa_search_map: DashMap<String, String>,
     pub pessoa_sender: mpsc::UnboundedSender<Pessoa>,
+    pub pessoa_create_count: std::sync::atomic::AtomicU64,
     pub db: PgPool,
 }
 
 impl MyRinha {
-    pub async fn from(env_values: &EnvironmentValues) -> Result<(Self, UnboundedReceiver<Pessoa>), Box<dyn std::error::Error>> {
+    pub async fn from(
+        env_values: &EnvironmentValues,
+    ) -> Result<(Self, UnboundedReceiver<Pessoa>), Box<dyn std::error::Error>> {
         let db = PgPoolOptions::new()
             .max_connections(env_values.db_pool_max_size)
             .connect(&env_values.database_url)
@@ -50,8 +53,9 @@ impl MyRinha {
                 pessoa_by_apelido_exists_set: Default::default(),
                 pessoa_by_id_map: Default::default(),
                 pessoa_search_map: Default::default(),
+                pessoa_create_count: Default::default(),
             },
-            pessoa_receiver
+            pessoa_receiver,
         ))
     }
 }
@@ -130,6 +134,8 @@ impl Rinha for MyRinha {
                 .insert(id.clone(), serde_json::to_string(&pessoa).unwrap());
             self.pessoa_by_apelido_exists_set.insert(id.clone());
             let _ = self.pessoa_sender.send(pessoa);
+            self.pessoa_create_count
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Ok(Response::new(CreatePessoaReply {
                 id: Some(id),
                 status: 201,
@@ -151,13 +157,23 @@ impl Rinha for MyRinha {
             .await;
         match amount {
             Ok(amount) => Ok(Response::new(CountPessoaReply {
-                amount: amount.0 as u64
+                amount: amount.0 as u64,
             })),
             _ => Err(Status::unavailable("Internal server error")),
         }
     }
-}
 
+    async fn count_success_create_pessoa(
+        &self,
+        _: Request<CountPessoaRequest>,
+    ) -> Result<Response<CountPessoaReply>, Status> {
+        Ok(Response::new(CountPessoaReply {
+            amount: self
+                .pessoa_create_count
+                .load(std::sync::atomic::Ordering::Acquire),
+        }))
+    }
+}
 
 async fn batch_insert(pessoas_to_insert: &mut Vec<Pessoa>, db: &PgPool) {
     if pessoas_to_insert.len() > 0 {
@@ -185,7 +201,7 @@ async fn batch_insert(pessoas_to_insert: &mut Vec<Pessoa>, db: &PgPool) {
 enum PessoaOrTimeout {
     ReceiverClosed,
     Timeout,
-    Pessoa(Pessoa)
+    Pessoa(Pessoa),
 }
 
 pub async fn batch_insert_task(
@@ -196,7 +212,9 @@ pub async fn batch_insert_task(
     let mut pessoas_to_insert = Vec::with_capacity(env_values.batch_max_insert_size);
     loop {
         let pessoa_fut = pessoa_receiver.recv();
-        let sleep_fut = tokio::time::sleep(Duration::from_secs(env_values.batch_max_wait_on_insert_channel));
+        let sleep_fut = tokio::time::sleep(Duration::from_secs(
+            env_values.batch_max_wait_on_insert_channel,
+        ));
         match select! {
             pessoa = pessoa_fut => pessoa.map(PessoaOrTimeout::Pessoa).unwrap_or(PessoaOrTimeout::ReceiverClosed),
             _ = sleep_fut => PessoaOrTimeout::Timeout,
@@ -206,11 +224,10 @@ pub async fn batch_insert_task(
                 if pessoas_to_insert.len() == env_values.batch_max_insert_size {
                     batch_insert(&mut pessoas_to_insert, &db).await
                 }
-            },
+            }
             PessoaOrTimeout::Timeout => batch_insert(&mut pessoas_to_insert, &db).await,
             PessoaOrTimeout::ReceiverClosed => break,
         }
-        
     }
 }
 
