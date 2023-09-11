@@ -17,7 +17,7 @@ dc-up-host_net:
 dc-down-host_net:
 	docker-compose -f docker-compose.host-network.yml down
 
-dc-restart-host_net: dc-down-host dc-up-host
+dc-restart-host_net: dc-down-host_net dc-up-host_net
 
 # API with Open Telemetry enabled with Jaeger and Prometheus to compute real time metrics and trace
 dc-up-otel:
