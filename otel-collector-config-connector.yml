@@ -12,7 +12,8 @@ receivers:
   docker_stats:
     endpoint: unix:///var/run/docker.sock
     collection_interval: 1s
-    container.cpu.usage.total:
+    metrics:
+      container.cpu.usage.total:
         enabled: true
       container.cpu.throttling_data.periods:
         enabled: true
