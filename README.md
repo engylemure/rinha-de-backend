@@ -87,13 +87,143 @@ BATCH_MAX_WAIT_ON_INSERT_CHANNEL=2
 ```
 
 ### Current local Results
- - Without Tracing and Search Cache without Expiration time: 46576
- ![local results for the implementation with cors and without tracing](./without_tracing_and_ex.png)
- - Without Tracing and Search Cache with Expiration time of 15s: 46576
+ - Without Tracing: 46576
+ bash output:
+ ```bash
+ ================================================================================
+---- Global Information --------------------------------------------------------
+> request count                                     116825 (OK=116825 KO=0     )
+> min response time                                      0 (OK=0      KO=-     )
+> max response time                                     23 (OK=23     KO=-     )
+> mean response time                                     0 (OK=0      KO=-     )
+> std deviation                                          1 (OK=1      KO=-     )
+> response time 50th percentile                          0 (OK=0      KO=-     )
+> response time 75th percentile                          1 (OK=1      KO=-     )
+> response time 95th percentile                          1 (OK=1      KO=-     )
+> response time 99th percentile                          3 (OK=3      KO=-     )
+> mean requests/sec                                567.112 (OK=567.112 KO=-     )
+---- Response Time Distribution ------------------------------------------------
+> t < 800 ms                                        116825 (100%)
+> 800 ms <= t < 1200 ms                                  0 (  0%)
+> t >= 1200 ms                                           0 (  0%)
+> failed                                                 0 (  0%)
+================================================================================
+
+Reports generated in 0s.
+Please open the following file: file:///home/jordao/Documents/rinha-de-backend-2023-q3/stress-test/user-files/results/rinhabackendsimulation-20230911162130743/index.html
+* processing: http://localhost:9999/contagem-pessoas
+*   Trying [::1]:9999...
+* Connected to localhost (::1) port 9999
+> GET /contagem-pessoas HTTP/1.1
+> Host: localhost:9999
+> User-Agent: curl/8.2.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Server: nginx/1.25.2
+< Date: Mon, 11 Sep 2023 16:25:02 GMT
+< Content-Type: application/json
+< Content-Length: 5
+< Connection: keep-alive
+< vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+< access-control-allow-credentials: true
+< access-control-expose-headers: content-type
+< 
+* Connection #0 to host localhost left intact
+46576%
+ ```
  ![local results for the implementation with cors and without tracing](./without_tracing.png)
- - With StdOut Tracing and Search Cache with Expiration time of 15s: 46576
+ - With StdOut Tracing: 46576
+ bash output: 
+ ```bash
+ ================================================================================
+---- Global Information --------------------------------------------------------
+> request count                                     116825 (OK=116825 KO=0     )
+> min response time                                      0 (OK=0      KO=-     )
+> max response time                                     16 (OK=16     KO=-     )
+> mean response time                                     1 (OK=1      KO=-     )
+> std deviation                                          1 (OK=1      KO=-     )
+> response time 50th percentile                          1 (OK=1      KO=-     )
+> response time 75th percentile                          1 (OK=1      KO=-     )
+> response time 95th percentile                          1 (OK=1      KO=-     )
+> response time 99th percentile                          3 (OK=3      KO=-     )
+> mean requests/sec                                567.112 (OK=567.112 KO=-     )
+---- Response Time Distribution ------------------------------------------------
+> t < 800 ms                                        116825 (100%)
+> 800 ms <= t < 1200 ms                                  0 (  0%)
+> t >= 1200 ms                                           0 (  0%)
+> failed                                                 0 (  0%)
+================================================================================
+
+Reports generated in 0s.
+Please open the following file: file:///home/jordao/Documents/rinha-de-backend-2023-q3/stress-test/user-files/results/rinhabackendsimulation-20230911160121491/index.html
+* processing: http://localhost:9999/contagem-pessoas
+*   Trying [::1]:9999...
+* Connected to localhost (::1) port 9999
+> GET /contagem-pessoas HTTP/1.1
+> Host: localhost:9999
+> User-Agent: curl/8.2.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Server: nginx/1.25.2
+< Date: Mon, 11 Sep 2023 16:04:52 GMT
+< Content-Type: application/json
+< Content-Length: 5
+< Connection: keep-alive
+< access-control-allow-credentials: true
+< access-control-expose-headers: content-type
+< vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+< 
+* Connection #0 to host localhost left intact
+46576% 
+ ```
  ![local results for the implementation with cors and stdout tracing](./with_stdout_tracing.png)
- - With Open Telemetry Tracing and Search Cache with Expiration time of 15s: 46576
+ - With Open Telemetry Tracing: 46576
+ bash output:
+ ```bash
+ ================================================================================
+---- Global Information --------------------------------------------------------
+> request count                                     116825 (OK=116825 KO=0     )
+> min response time                                      0 (OK=0      KO=-     )
+> max response time                                    269 (OK=269    KO=-     )
+> mean response time                                    11 (OK=11     KO=-     )
+> std deviation                                         28 (OK=28     KO=-     )
+> response time 50th percentile                          1 (OK=1      KO=-     )
+> response time 75th percentile                          2 (OK=2      KO=-     )
+> response time 95th percentile                         75 (OK=75     KO=-     )
+> response time 99th percentile                        138 (OK=138    KO=-     )
+> mean requests/sec                                567.112 (OK=567.112 KO=-     )
+---- Response Time Distribution ------------------------------------------------
+> t < 800 ms                                        116825 (100%)
+> 800 ms <= t < 1200 ms                                  0 (  0%)
+> t >= 1200 ms                                           0 (  0%)
+> failed                                                 0 (  0%)
+================================================================================
+
+Reports generated in 0s.
+Please open the following file: file:///home/jordao/Documents/rinha-de-backend-2023-q3/stress-test/user-files/results/rinhabackendsimulation-20230911162707861/index.html
+* processing: http://localhost:9999/contagem-pessoas
+*   Trying [::1]:9999...
+* Connected to localhost (::1) port 9999
+> GET /contagem-pessoas HTTP/1.1
+> Host: localhost:9999
+> User-Agent: curl/8.2.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< Server: nginx/1.25.2
+< Date: Mon, 11 Sep 2023 16:30:39 GMT
+< Content-Type: application/json
+< Content-Length: 5
+< Connection: keep-alive
+< access-control-allow-credentials: true
+< vary: Origin, Access-Control-Request-Method, Access-Control-Request-Headers
+< access-control-expose-headers: content-type
+< 
+* Connection #0 to host localhost left intact
+46576% 
+ ```
  ![local results for the implementation with cors and open telemetry tracing](./with_otel_tracing.png)
  - Winner from the challenge: 47089 this value is slightly wrong sine the total amount of requests for insertion is 46576
  ![local results for the implementation from viniciusfonseca the winner from the challenge](./challenge_winner.png)
