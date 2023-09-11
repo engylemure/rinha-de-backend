@@ -7,7 +7,9 @@ pub struct EnvironmentValues {
     pub server_port: u16,
     pub rust_env: String,
     pub logger: Option<LoggerOutput>,
-    pub rinha_url: String,
+    pub db_pool_max_size: u32,
+    pub batch_max_insert_size: usize,
+    pub batch_max_wait_on_insert_channel: u64,
 }
 
 pub enum LoggerOutput {
@@ -42,9 +44,21 @@ impl EnvironmentValues {
                 .ok()
                 .map(|s| s.parse().ok())
                 .flatten(),
-            rinha_url: std::env::var("RINHA_URL")
+            db_pool_max_size: std::env::var("DATABASE_POOL_MAX_SIZE")
+                .map(|s| s.parse().ok())
                 .ok()
-                .unwrap_or(String::from("http://[::]:50051")),
+                .flatten()
+                .unwrap_or(256),
+            batch_max_insert_size: std::env::var("BATCH_MAX_INSERT_SIZE")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(256),
+            batch_max_wait_on_insert_channel: std::env::var("BATCH_MAX_WAIT_ON_INSERT_CHANNEL")
+                .map(|s| s.parse().ok())
+                .ok()
+                .flatten()
+                .unwrap_or(1),
         }
     }
 }
