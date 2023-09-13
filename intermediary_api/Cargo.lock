@@ -839,28 +839,8 @@ dependencies = [
 name = "intermediary_api"
 version = "0.1.0"
 dependencies = [
- "chrono",
- "dashmap",
- "dotenv",
- "init-tracing-opentelemetry",
- "opentelemetry",
- "opentelemetry-otlp",
- "prost",
- "serde",
- "serde_json",
- "sqlx",
+ "rinha_grpc_server",
  "tokio",
- "tonic",
- "tonic-build",
- "tonic-health",
- "tonic-reflection",
- "tonic-tracing-opentelemetry",
- "tower-http",
- "tracing",
- "tracing-bunyan-formatter",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
@@ -1502,6 +1482,34 @@ name = "regex-syntax"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
+
+[[package]]
+name = "rinha_grpc_server"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dashmap",
+ "dotenv",
+ "init-tracing-opentelemetry",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "prost",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tonic-health",
+ "tonic-reflection",
+ "tonic-tracing-opentelemetry",
+ "tower-http",
+ "tracing",
+ "tracing-bunyan-formatter",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "rsa"

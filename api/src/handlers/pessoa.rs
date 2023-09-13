@@ -93,25 +93,6 @@ pub async fn count(app_state: web::Data<AppState>) -> impl Responder {
     }
 }
 
-#[actix_web::get("/contagem-criacao-pessoas")]
-pub async fn create_count(app_state: web::Data<AppState>) -> impl Responder {
-    match app_state
-        .rinha_client
-        .clone()
-        .count_success_create_pessoa(tonic::Request::new(CountPessoaRequest {}))
-        .await
-        .ok()
-        .map(|res| res.into_inner().amount)
-    {
-        Some(amount) => HttpResponse::Ok().json(amount),
-        _ => HttpResponse::InternalServerError().finish(),
-    }
-}
-
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(create)
-        .service(get)
-        .service(all)
-        .service(count)
-        .service(create_count);
+    cfg.service(create).service(get).service(all).service(count);
 }

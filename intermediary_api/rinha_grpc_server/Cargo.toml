@@ -1,0 +1,42 @@
+[package]
+name = "rinha_grpc_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+without_cache_and_batch = []
+
+[dependencies]
+dashmap = "5.5.3"
+prost = "0.11.9"
+tokio = { version = "1.32.0", features = ["full"] }
+tonic = "0.9"
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres"] }
+dotenv = "0.15.0"
+serde = "1.0.188"
+serde_json = "1.0.105"
+chrono = "0.4.26"
+uuid = { version = "1.4.1", features = ["v4", "fast-rng", "serde"] }
+tracing-subscriber = { version = "0.3.17", features = [
+    "registry",
+    "env-filter",
+] }
+tracing = "0.1.37"
+tower-http = { version = "0.4.3", features = ["trace"] }
+tonic-health = "0.9"
+tonic-reflection = "0.9"
+tonic-tracing-opentelemetry = "0.13.1"
+opentelemetry = { version = "0.20.0", features = ["rt-tokio-current-thread"] }
+opentelemetry-otlp = "0.13.0"
+tracing-opentelemetry = "0.20.0"
+tracing-bunyan-formatter = "0.3.9"
+init-tracing-opentelemetry = { version = "0.13.1", features = [
+    "otlp",
+    "tracing_subscriber_ext",
+] }
+
+[build-dependencies]
+tonic-build = "0.9"

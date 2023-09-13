@@ -58,13 +58,14 @@ services:
       - RUST_ENV=prod
       - RUST_LOG=info
       - TARGET_NAME=intermediary_api
-      - BATCH_MAX_INSERT_SIZE=2048
+      - BATCH_MAX_INSERT_SIZE=4096
       - BATCH_MAX_WAIT_ON_INSERT_CHANNEL=1
+      # - DATABASE_POOL_MAX_SIZE=64
       # - LOGGER_OUTPUT=stdout
     deploy:
       resources:
         limits:
-          cpus: '0.45'
+          cpus: '0.25'
           memory: '0.5GB'
   db:
     # Banco de dados
@@ -83,7 +84,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: '0.7'
           memory: '1.0GB'
 networks:
   default:
