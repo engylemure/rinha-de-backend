@@ -27,16 +27,16 @@ impl From<PessoaInput> for crate::rinha::CreatePessoaRequest {
     }
 }
 
-#[cfg(feature="without_cache")]
+#[cfg(feature = "without_cache")]
 pub use without_cache::*;
 
-#[cfg(feature="without_cache")]
+#[cfg(feature = "without_cache")]
 mod without_cache {
-    use serde::{Serialize, Deserialize};
-    use uuid::Uuid;
-    use chrono::NaiveDate;
-    use sqlx::FromRow;
     use super::PessoaInput;
+    use chrono::NaiveDate;
+    use serde::{Deserialize, Serialize};
+    use sql_builder::quote;
+    use uuid::Uuid;
 
     impl PessoaInput {
         #[inline(always)]
@@ -48,7 +48,7 @@ mod without_cache {
         }
     }
 
-    #[derive(Serialize, Deserialize, Debug, FromRow)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub struct Pessoa {
         pub id: String,
         pub apelido: String,
@@ -59,7 +59,29 @@ mod without_cache {
 
     impl Pessoa {
         #[inline]
-        pub fn from(value: PessoaInput) -> Option<Self> {
+        pub fn insert_query(&self) -> Option<String> {
+            sql_builder::SqlBuilder::insert_into("pessoas")
+                .fields(&["id", "apelido", "nome", "nascimento", "stack"])
+                .values(&[
+                    quote(&self.id),
+                    quote(&self.apelido),
+                    quote(&self.nome),
+                    quote(&self.nascimento),
+                    quote(format!(
+                        "{{{}}}",
+                        self.stack
+                            .as_ref()
+                            .map(|stack| stack.iter().map(quote).collect::<Vec<_>>().join(","))
+                            .unwrap_or_default()
+                    )),
+                ])
+                .sql()
+                .ok()
+        }
+    }
+
+    impl From<PessoaInput> for Option<Pessoa> {
+        fn from(value: PessoaInput) -> Self {
             value.validate().then_some(Pessoa {
                 id: Uuid::new_v4().to_string(),
                 apelido: value.apelido,
@@ -67,6 +89,18 @@ mod without_cache {
                 nascimento: value.nascimento,
                 stack: value.stack,
             })
+        }
+    }
+
+    impl From<tokio_postgres::Row> for Pessoa {
+        fn from(value: tokio_postgres::Row) -> Self {
+            Self {
+                id: value.get("id"),
+                apelido: value.get("apelido"),
+                nome: value.get("nome"),
+                nascimento: value.get("nascimento"),
+                stack: value.get("stack"),
+            }
         }
     }
 }

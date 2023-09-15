@@ -116,57 +116,50 @@ mod without_cache {
     };
     use actix_web::{web, HttpResponse, Responder};
     use serde::Deserialize;
-    use sqlx::Executor;
     #[actix_web::post("/pessoas")]
     pub async fn create(
         input: web::Json<PessoaInput>,
         app_state: web::Data<AppState>,
     ) -> impl Responder {
-        match Pessoa::from(input.into_inner()) {
-            Some(pessoa) => {
+        match Option::<Pessoa>::from(input.into_inner())
+            .map(|pessoa| (pessoa.insert_query(), pessoa))
+        {
+            Some((Some(query), pessoa)) => {
                 let id = pessoa.id.clone();
 
-
-                let insert_query = app_state.pool.get().await.query(
-
-                );
-                // let query = sqlx::query::<sqlx::Postgres>(
-                //     "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) values ($1, $2, $3, $4, $5)"
-                // ).bind(pessoa.id)
-                // .bind(pessoa.nome)
-                // .bind(pessoa.apelido)
-                // .bind(pessoa.nascimento)
-                // .bind(pessoa.stack.unwrap_or_default());
-            
-
-                // if app_state.db.execute(query).await.is_ok() {
-                //     let location = format!("/pessoas/{}", id);
-                //     HttpResponse::Created()
-                //         .append_header(("Location", location))
-                //         .finish()
-                // } else {
-                //     HttpResponse::UnprocessableEntity().finish()
-                // }
+                if let Ok(conn) = app_state.pool.get().await {
+                    if conn.query_one(&query, &[]).await.is_ok() {
+                        let location = format!("/pessoas/{}", id);
+                        return HttpResponse::Created()
+                            .append_header(("Location", location))
+                            .finish();
+                    }
+                }
+                HttpResponse::UnprocessableEntity().finish()
             }
-            None => HttpResponse::BadRequest().finish(),
+            _ => HttpResponse::BadRequest().finish(),
         }
     }
 
     #[actix_web::get("/pessoas/{id}")]
     pub async fn get(id: web::Path<String>, app_state: web::Data<AppState>) -> impl Responder {
-        match sqlx::query_as::<_, Pessoa>(
-            "
-    SELECT * FROM pessoas where id = $1;
-",
-        )
-        .persistent(true)
-        .bind(id.into_inner())
-        .fetch_one(&app_state.db)
-        .await
-        {
-            Ok(pessoa) => HttpResponse::Ok().json(pessoa),
-            Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().finish(),
-            Err(_) => HttpResponse::InternalServerError().finish(),
+        let id = id.into_inner();
+        if let Ok(conn) = app_state.pool.get().await {
+            return match conn
+                .query_one(
+                    "
+            SELECT * FROM pessoas where id = $1;
+        ",
+                    &[&id],
+                )
+                .await
+                .map(Pessoa::from)
+            {
+                Ok(pessoa) => HttpResponse::Ok().json(pessoa),
+                Err(_) => HttpResponse::NotFound().finish(),
+            };
+        } else {
+            HttpResponse::InternalServerError().finish()
         }
     }
 
@@ -181,28 +174,35 @@ mod without_cache {
         app_state: web::Data<AppState>,
     ) -> impl Responder {
         let term_param = format!("%{}%", input.t.to_lowercase());
-        match sqlx::query_as::<sqlx::Postgres, Pessoa>(
-            "
-            SELECT id, apelido, nome, nascimento, stack FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
+        if let Ok(conn) = app_state.pool.get().await {
+            if let Ok(stmt) = conn
+                .prepare_cached(
+                    "
+            SELECT ID, APELIDO, NOME, NASCIMENTO, STACK
+            FROM PESSOAS P
+            WHERE P.BUSCA_TRGM LIKE $1
+            LIMIT 50;
         ",
-        )
-        .bind(&term_param)
-        .persistent(true)
-        .fetch_all(&app_state.db).await {
-            Ok(pessoas) => HttpResponse::Ok().json(pessoas),
-            Err(_) => HttpResponse::InternalServerError().finish()
+                )
+                .await
+            {
+                if let Ok(pessoas) = conn.query(&stmt, &[&term_param]).await {
+                    return HttpResponse::Ok()
+                        .json(pessoas.into_iter().map(Pessoa::from).collect::<Vec<_>>());
+                }
+            }
         }
+        HttpResponse::InternalServerError().finish()
     }
 
     #[actix_web::get("/contagem-pessoas")]
     pub async fn count(app_state: web::Data<AppState>) -> impl Responder {
-        match sqlx::query_as::<_, (i64,)>("SELECT COUNT(id) FROM pessoas;")
-            .fetch_one(&app_state.db)
-            .await
-        {
-            Ok(amount) => HttpResponse::Ok().json(amount.0),
-            _ => HttpResponse::InternalServerError().finish(),
+        if let Ok(conn) = app_state.pool.get().await {
+            if let Ok(data) = conn.query_one("SELECT COUNT(id) FROM pessoas;", &[]).await {
+                return HttpResponse::Ok().json(data.get::<usize, i64>(0));
+            }
         }
+        HttpResponse::InternalServerError().finish()
     }
 
     pub fn config(cfg: &mut web::ServiceConfig) {

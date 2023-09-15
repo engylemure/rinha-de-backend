@@ -61,14 +61,11 @@ mod with_cache {
 pub use without_cache::*;
 #[cfg(feature = "without_cache")]
 mod without_cache {
-    use sqlx::postgres::PgPoolOptions;
-    use sqlx::PgPool;
 
     use crate::utils::env::EnvironmentValues;
 
     #[derive(Clone)]
     pub struct AppState {
-        pub db: PgPool,
         pub pool: deadpool_postgres::Pool,
     }
 
@@ -76,10 +73,6 @@ mod without_cache {
         pub async fn from(
             env_values: &EnvironmentValues,
         ) -> Result<Self, Box<dyn std::error::Error>> {
-            let db = PgPoolOptions::new()
-                .max_connections(env_values.db_pool_max_size)
-                .connect(&env_values.database_url)
-                .await?;
             let pool = deadpool_postgres::Config {
                 host: Some(env_values.db_host.clone()),
                 dbname: Some(env_values.db_name.clone()),
@@ -92,7 +85,7 @@ mod without_cache {
                 }),
                 ..Default::default()
             }.create_pool(Some(deadpool_postgres::Runtime::Tokio1), tokio_postgres::NoTls)?;
-            Ok(Self { db, pool })
+            Ok(Self { pool })
         }
     }
 }

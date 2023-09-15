@@ -17,7 +17,7 @@ services:
       - RUST_LOG=info
       - RINHA_URL=http://intermediary_api:50051
       - TARGET_NAME=rinha
-      - DATABASE_POOL_MAX_SIZE=4
+      - DATABASE_POOL_MAX_SIZE=8
       # - LOGGER_OUTPUT=stdout
     deploy:
       resources:
