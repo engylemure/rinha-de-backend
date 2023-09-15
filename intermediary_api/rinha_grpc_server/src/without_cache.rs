@@ -58,7 +58,7 @@ impl Rinha for MyRinha {
         request: Request<PessoaSearchRequest>,
     ) -> Result<Response<PessoaSearchReply>, Status> {
         let term = request.into_inner().term;
-        let term_param = format!("%{}%", term);
+        let term_param = format!("%{}%", term.to_lowercase());
         let search_res = sqlx::query_as::<sqlx::Postgres, Pessoa>(
             "
             SELECT id, apelido, nome, nascimento, stack FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
@@ -83,7 +83,7 @@ impl Rinha for MyRinha {
                 .bind(pessoa.nome)
                 .bind(pessoa.apelido)
                 .bind(pessoa.nascimento)
-                .bind(pessoa.stack.map(|stacks| stacks.join(" ")));
+                .bind(pessoa.stack.unwrap_or_default());
             if query.execute(&self.db).await.is_ok() {
                 Ok(Response::new(CreatePessoaReply {
                     id: Some(id),

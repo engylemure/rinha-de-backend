@@ -5,6 +5,7 @@ edition = "2021"
 
 [workspace]
 members = [".", "rinha_grpc_server"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 rinha_grpc_server = { path = "rinha_grpc_server", features = [] }

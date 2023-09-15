@@ -94,7 +94,7 @@ impl Rinha for MyRinha {
                 json: Some(json.clone()),
             }));
         }
-        let term_param = format!("%{}%", term);
+        let term_param = format!("%{}%", term.to_lowercase());
         let search_res = sqlx::query_as::<sqlx::Postgres, Pessoa>(
             "
             SELECT id, apelido, nome, nascimento, stack FROM pessoas p where p.busca_trgm LIKE $1 LIMIT 50;
@@ -164,7 +164,7 @@ fn batch_insert(pessoas_to_insert: &mut Vec<Pessoa>, db: &PgPool) {
                 .push_bind(pessoa.nome)
                 .push_bind(pessoa.apelido)
                 .push_bind(pessoa.nascimento)
-                .push_bind(pessoa.stack.map(|stacks| stacks.join(" ")));
+                .push_bind(pessoa.stack.unwrap_or_default());
         });
         query.push(" ON CONFLICT DO NOTHING;");
         let db = db.clone();
