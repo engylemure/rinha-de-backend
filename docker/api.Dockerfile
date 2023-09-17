@@ -22,8 +22,9 @@ COPY env.tmpl /opt/app
 ENTRYPOINT ["dockerize", "-template", "./env.tmpl:./api/.env"]
 
 ENV TARGET_NAME rinha
-RUN cd api && cargo build --release && cd target/release && rm -rf build deps examples incremental
+RUN cd api && cargo build --release && cargo build --release --bin rinha_without_cache --features="without_cache" && cd target/release && rm -rf build deps examples incremental
 
 # Application Execution
 
 CMD ["sh", "./start.sh"]
+

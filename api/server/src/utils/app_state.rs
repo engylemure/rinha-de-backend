@@ -69,7 +69,6 @@ mod without_cache {
     #[derive(Clone)]
     pub struct AppState {
         pub db: PgPool,
-        pub pool: deadpool_postgres::Pool,
     }
 
     impl AppState {
@@ -80,19 +79,7 @@ mod without_cache {
                 .max_connections(env_values.db_pool_max_size)
                 .connect(&env_values.database_url)
                 .await?;
-            let pool = deadpool_postgres::Config {
-                host: Some(env_values.db_host.clone()),
-                dbname: Some(env_values.db_name.clone()),
-                port: Some(5432),
-                password: Some(env_values.db_password.clone()),
-                user: Some(env_values.db_user.clone()),
-                pool: Some(deadpool_postgres::PoolConfig {
-                    max_size: env_values.db_pool_max_size as usize,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            }.create_pool(Some(deadpool_postgres::Runtime::Tokio1), tokio_postgres::NoTls)?;
-            Ok(Self { db, pool })
+            Ok(Self { db })
         }
     }
 }

@@ -27,16 +27,16 @@ impl From<PessoaInput> for crate::rinha::CreatePessoaRequest {
     }
 }
 
-#[cfg(feature="without_cache")]
+#[cfg(feature = "without_cache")]
 pub use without_cache::*;
 
-#[cfg(feature="without_cache")]
+#[cfg(feature = "without_cache")]
 mod without_cache {
-    use serde::{Serialize, Deserialize};
-    use uuid::Uuid;
-    use chrono::NaiveDate;
-    use sqlx::FromRow;
     use super::PessoaInput;
+    use chrono::NaiveDate;
+    use serde::{Deserialize, Serialize};
+    use sqlx::FromRow;
+    use uuid::Uuid;
 
     impl PessoaInput {
         #[inline(always)]
@@ -44,7 +44,11 @@ mod without_cache {
             self.apelido.len() <= 32
                 && self.nome.len() <= 100
                 && NaiveDate::parse_from_str(&self.nascimento, "%Y-%m-%d").is_ok()
-                && self.stack.iter().all(|s| s.len() < 32)
+                && self
+                    .stack
+                    .as_ref()
+                    .map(|stack| stack.iter().all(|s| s.len() <= 32))
+                    .unwrap_or(true)
         }
     }
 

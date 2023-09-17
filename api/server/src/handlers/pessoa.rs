@@ -126,27 +126,22 @@ mod without_cache {
             Some(pessoa) => {
                 let id = pessoa.id.clone();
 
+                let query = sqlx::query::<sqlx::Postgres>(
+                    "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) values ($1, $2, $3, $4, $5)"
+                ).bind(pessoa.id)
+                .bind(pessoa.nome)
+                .bind(pessoa.apelido)
+                .bind(pessoa.nascimento)
+                .bind(pessoa.stack);
 
-                let insert_query = app_state.pool.get().await.query(
-
-                );
-                // let query = sqlx::query::<sqlx::Postgres>(
-                //     "INSERT INTO pessoas (id, nome, apelido, nascimento, stack) values ($1, $2, $3, $4, $5)"
-                // ).bind(pessoa.id)
-                // .bind(pessoa.nome)
-                // .bind(pessoa.apelido)
-                // .bind(pessoa.nascimento)
-                // .bind(pessoa.stack.unwrap_or_default());
-            
-
-                // if app_state.db.execute(query).await.is_ok() {
-                //     let location = format!("/pessoas/{}", id);
-                //     HttpResponse::Created()
-                //         .append_header(("Location", location))
-                //         .finish()
-                // } else {
-                //     HttpResponse::UnprocessableEntity().finish()
-                // }
+                if app_state.db.execute(query).await.is_ok() {
+                    let location = format!("/pessoas/{}", id);
+                    HttpResponse::Created()
+                        .append_header(("Location", location))
+                        .finish()
+                } else {
+                    HttpResponse::UnprocessableEntity().finish()
+                }
             }
             None => HttpResponse::BadRequest().finish(),
         }

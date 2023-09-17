@@ -2,13 +2,25 @@
 name = "rinha"
 version = "0.1.0"
 edition = "2021"
-
+default-run = "rinha"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+without_cache = ['server/without_cache']
 
 [workspace]
 members = [".", "server"]
 
 [dependencies]
-server = { path = "server", features = ["without_cache"] }
+server = { path = "server" }
 actix-web = "4"
-sql-builder = "3.1.1"
+
+[[bin]]
+name = "rinha"
+path = "src/main.rs"
+
+[[bin]]
+name = "rinha_without_cache"
+path = "src/main.rs"
+required-features = ["without_cache"]
